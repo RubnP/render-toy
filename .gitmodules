@@ -1,0 +1,12 @@
+[submodule "include/imgui"]
+	path = include/imgui
+	url = git@github.com:ocornut/imgui.git
+[submodule "include/stb"]
+	path = include/stb
+	url = git@github.com:nothings/stb.git
+[submodule "include/tinygltf"]
+	path = include/tinygltf
+	url = git@github.com:syoyo/tinygltf.git
+[submodule "include/tinyobjloader"]
+	path = include/tinyobjloader
+	url = git@github.com:tinyobjloader/tinyobjloader.git
