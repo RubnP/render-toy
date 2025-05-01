@@ -28,6 +28,7 @@ target_include_directories(render-toy PRIVATE "include/stb/")
 target_include_directories(render-toy PRIVATE "include/imgui/")
 target_include_directories(render-toy PRIVATE "include/imgui/backends")
 target_include_directories(render-toy PUBLIC "src/")
+target_include_directories(render-toy PUBLIC "src/platform")
 
 add_subdirectory(include/tinygltf/)
 add_subdirectory(include/tinyobjloader/)
