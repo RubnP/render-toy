@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <iostream>
 #include <vector>
 #include <vulkan/vulkan.h>
@@ -36,6 +37,8 @@ class vk_loader {
 
   //---------------Member data-------------------------
   VkInstance m_instance;
+  std::vector<VkPhysicalDevice> m_physical_devices;
+  VkPhysicalDevice m_selected_physical_device = VK_NULL_HANDLE;
 
   const std::vector<const char *> m_validation_layers = {
       "VK_LAYER_KHRONOS_validation"};
@@ -45,7 +48,7 @@ class vk_loader {
   //---------------Member methods----------------------
   void create_instance();
   bool check_validation_layer_support();
-  std::vector<const char *> get_required_extensions();
+  std::vector<const char *> get_required_extensions(); // Instance
 
   VkResult create_debug_utils_messenger_ext(
       VkInstance instance,
@@ -59,12 +62,20 @@ class vk_loader {
                                     const VkAllocationCallbacks *p_allocator);
 
   void populate_debug_messenger_create_info(
-      VkDebugUtilsMessengerCreateInfoEXT &createInfo);
+      VkDebugUtilsMessengerCreateInfoEXT &createInfo); // Debug
+
+  bool is_device_suitable(VkPhysicalDevice device);
+  int rate_physical_device(VkPhysicalDevice device); // Physical devices
 
 public:
   //---------------Public methods----------------------
   void init_vulkan();
   void setup_debug_messenger();
-  VkInstance *get_vk_instance();
+  void find_physical_devices();
+  void pick_physical_device(uint32_t id = 0);
+  void pick_best_physical_device();
+  VkInstance get_vk_instance();
+  VkPhysicalDevice get_selected_physical_device();
+  std::vector<VkPhysicalDevice> get_physical_devices();
   void destroy_vulkan();
 };

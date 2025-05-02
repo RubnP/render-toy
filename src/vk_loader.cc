@@ -6,6 +6,7 @@
 
 #include <GLFW/glfw3.h>
 #include <cstring>
+#include <map>
 #include <stdexcept>
 #include <vk_loader.hh>
 #include <vulkan/vulkan_core.h>
@@ -89,7 +90,13 @@ void vk_loader::setup_debug_messenger() {
   }
 }
 
-VkInstance *vk_loader::get_vk_instance() { return &m_instance; }
+VkInstance vk_loader::get_vk_instance() { return m_instance; }
+VkPhysicalDevice vk_loader::get_selected_physical_device() {
+  return m_selected_physical_device;
+}
+std::vector<VkPhysicalDevice> vk_loader::get_physical_devices() {
+  return m_physical_devices;
+}
 
 /**
  * @brief This function will return true if and only if all the validation layer
@@ -161,6 +168,93 @@ void vk_loader::destroy_debug_utils_messenger_ext(
   if (func != nullptr) {
     func(instance, debug_messenger, p_allocator);
   }
+}
+
+bool vk_loader::is_device_suitable(VkPhysicalDevice device) {
+  // TODO: Once the app is more complete actually implement this function with
+  // the requirements of the pipeline created by the user
+
+  VkPhysicalDeviceProperties device_properties;
+  VkPhysicalDeviceFeatures device_features;
+  vkGetPhysicalDeviceProperties(device, &device_properties);
+  vkGetPhysicalDeviceFeatures(device, &device_features);
+
+  return device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU &&
+         device_features.geometryShader;
+}
+
+/**
+ * @brief Find all the physical devices and stores them in the internal list
+ */
+void vk_loader::find_physical_devices() {
+  uint32_t device_count = 0;
+  vkEnumeratePhysicalDevices(m_instance, &device_count, nullptr);
+  if (device_count == 0) {
+    throw std::runtime_error("Failed to find GPU with vulkan support!");
+  }
+
+  std::vector<VkPhysicalDevice> devices(device_count);
+  vkEnumeratePhysicalDevices(m_instance, &device_count, devices.data());
+
+  m_physical_devices.clear();
+  for (const auto &device : devices) {
+    if (is_device_suitable(device)) {
+      m_physical_devices.push_back(device);
+    }
+  }
+
+  if (m_physical_devices.empty()) {
+    throw std::runtime_error("Failed to find a GPU with required features");
+  }
+}
+
+/**
+ * @brief Change the physical device to use.
+ */
+void vk_loader::pick_physical_device(uint32_t id) {
+  m_selected_physical_device = m_physical_devices[id];
+}
+
+void vk_loader::pick_best_physical_device() {
+  // Use an ordered map to automatically sort candidates by increasing score
+  std::multimap<int, VkPhysicalDevice> candidates;
+
+  for (const auto &device : m_physical_devices) {
+    int score = rate_physical_device(device);
+    candidates.insert(std::make_pair(score, device));
+  }
+
+  // Check if the best candidate is suitable at all
+  if (candidates.rbegin()->first > 0) {
+    m_selected_physical_device = candidates.rbegin()->second;
+  } else {
+    throw std::runtime_error("failed to find a suitable GPU!");
+  }
+}
+
+int vk_loader::rate_physical_device(VkPhysicalDevice device) {
+
+  VkPhysicalDeviceProperties device_properties;
+  VkPhysicalDeviceFeatures device_features;
+  vkGetPhysicalDeviceProperties(device, &device_properties);
+  vkGetPhysicalDeviceFeatures(device, &device_features);
+
+  int score = 0;
+
+  // Discrete GPUs have a significant performance advantage
+  if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+    score += 1000;
+  }
+
+  // Maximum possible size of textures affects graphics quality
+  score += device_properties.limits.maxImageDimension2D;
+
+  // Application can't function without geometry shaders
+  if (!device_features.geometryShader) {
+    return 0;
+  }
+
+  return score;
 }
 
 void vk_loader::destroy_vulkan() {
