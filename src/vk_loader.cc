@@ -4,9 +4,11 @@
  * @brief This file contains the implementation of the vulkan loader class
  */
 
+#define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <cstring>
 #include <map>
+#include <set>
 #include <stdexcept>
 #include <vector>
 #include <vk_loader.hh>
@@ -175,6 +177,13 @@ void vk_loader::destroy_debug_utils_messenger_ext(
   }
 }
 
+void vk_loader::create_surface(GLFWwindow *window) {
+  if (glfwCreateWindowSurface(m_instance, window, nullptr, &m_surface) !=
+      VK_SUCCESS) {
+    throw std::runtime_error("failed to create window surface");
+  }
+}
+
 bool vk_loader::is_device_suitable(VkPhysicalDevice device) {
   // TODO: Once the app is more complete actually implement this function with
   // the requirements of the pipeline created by the user
@@ -192,7 +201,67 @@ bool vk_loader::is_device_suitable(VkPhysicalDevice device) {
   if (!indices.is_complete())
     return false;
 
+  if (!check_device_extension_support(device))
+    return false;
+
+  bool swap_chain_suitable = false;
+
+  if (check_device_extension_support(device)) {
+    swap_chain_support_details swap_chain_support =
+        query_swap_chain_support(device);
+    swap_chain_suitable = !swap_chain_support.formats.empty() &&
+                          !swap_chain_support.present_modes.empty();
+  }
+
+  if (!swap_chain_suitable)
+    return false;
+
   return true;
+}
+
+bool vk_loader::check_device_extension_support(VkPhysicalDevice device) {
+  uint32_t extension_count;
+  vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count,
+                                       nullptr);
+  std::vector<VkExtensionProperties> available_extensions(extension_count);
+  vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count,
+                                       available_extensions.data());
+
+  std::set<std::string> required_extensions(m_device_extensions.begin(),
+                                            m_device_extensions.end());
+
+  for (const auto &extensions : available_extensions) {
+    required_extensions.erase(extensions.extensionName);
+  }
+  return required_extensions.empty();
+}
+
+swap_chain_support_details
+vk_loader::query_swap_chain_support(VkPhysicalDevice device) {
+  swap_chain_support_details details;
+
+  vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, m_surface,
+                                            &details.capabilities);
+
+  uint32_t format_count;
+  vkGetPhysicalDeviceSurfaceFormatsKHR(device, m_surface, &format_count,
+                                       nullptr);
+  if (format_count != 0) {
+    details.formats.resize(format_count);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(device, m_surface, &format_count,
+                                         details.formats.data());
+  }
+
+  uint32_t present_mode_count;
+  vkGetPhysicalDeviceSurfacePresentModesKHR(device, m_surface,
+                                            &present_mode_count, nullptr);
+  if (present_mode_count != 0) {
+    details.present_modes.resize(present_mode_count);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(
+        device, m_surface, &present_mode_count, details.present_modes.data());
+  }
+
+  return details;
 }
 
 /**
@@ -246,10 +315,6 @@ void vk_loader::pick_best_physical_device() {
 
 int vk_loader::rate_physical_device(VkPhysicalDevice device) {
 
-  if (!is_device_suitable(device)) {
-    return 0;
-  }
-
   VkPhysicalDeviceProperties device_properties;
   VkPhysicalDeviceFeatures device_features;
   vkGetPhysicalDeviceProperties(device, &device_properties);
@@ -290,6 +355,13 @@ queue_family_indices vk_loader::find_queue_families(VkPhysicalDevice device) {
       indices.graphics_family = i;
     }
 
+    VkBool32 present_support = false;
+    vkGetPhysicalDeviceSurfaceSupportKHR(device, i, m_surface,
+                                         &present_support);
+    if (present_support) {
+      indices.present_family = i;
+    }
+
     if (indices.is_complete())
       break;
 
@@ -303,24 +375,32 @@ void vk_loader::create_logical_device() {
   queue_family_indices indices =
       find_queue_families(m_selected_physical_device);
 
-  VkDeviceQueueCreateInfo queue_create_info{};
-  queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-  queue_create_info.queueFamilyIndex = indices.graphics_family.value();
-  queue_create_info.queueCount = 1;
-
+  std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
+  std::set<uint32_t> unique_queue_families = {indices.graphics_family.value(),
+                                              indices.present_family.value()};
   float queue_priority = 1.0f;
-  queue_create_info.pQueuePriorities = &queue_priority;
+  for (uint32_t queue_family : unique_queue_families) {
+    VkDeviceQueueCreateInfo queue_create_info{};
+    queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queue_create_info.queueFamilyIndex = queue_family;
+    queue_create_info.queueCount = 1;
+    queue_create_info.pQueuePriorities = &queue_priority;
+    queue_create_infos.push_back(queue_create_info);
+  }
 
   VkPhysicalDeviceFeatures device_features{}; // TODO: Add required features
 
   VkDeviceCreateInfo create_info{};
   create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-  create_info.pQueueCreateInfos = &queue_create_info;
-  create_info.queueCreateInfoCount = 1;
+  create_info.queueCreateInfoCount =
+      static_cast<uint32_t>(queue_create_infos.size());
+  create_info.pQueueCreateInfos = queue_create_infos.data();
 
   create_info.pEnabledFeatures = &device_features;
 
-  create_info.enabledExtensionCount = 0;
+  create_info.enabledExtensionCount =
+      static_cast<uint32_t>(m_device_extensions.size());
+  create_info.ppEnabledExtensionNames = m_device_extensions.data();
 
   if (M_ENABLE_VALIDATION_LAYERS) {
     create_info.enabledLayerCount =
@@ -337,6 +417,9 @@ void vk_loader::create_logical_device() {
 
   vkGetDeviceQueue(m_logical_device, indices.graphics_family.value(), 0,
                    &m_graphics_queue);
+
+  vkGetDeviceQueue(m_logical_device, indices.present_family.value(), 0,
+                   &m_present_queue);
 }
 
 void vk_loader::destroy_vulkan() {
@@ -344,5 +427,6 @@ void vk_loader::destroy_vulkan() {
   if (M_ENABLE_VALIDATION_LAYERS) {
     destroy_debug_utils_messenger_ext(m_instance, m_debug_messenger, nullptr);
   }
+  vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
   vkDestroyInstance(m_instance, nullptr);
 }
