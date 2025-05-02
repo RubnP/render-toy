@@ -23,6 +23,7 @@ void rt_app::init_vulkan() {
                                            // than selecting the first
                                            // compatible GPU. A menu for the
                                            // user to select once in the app?
+  m_vk_loader.create_logical_device();
 }
 
 void rt_app::main_loop() {

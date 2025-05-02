@@ -8,9 +8,16 @@
 
 #include <cstdint>
 #include <iostream>
+#include <optional>
 #include <vector>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
+
+struct queue_family_indices {
+  std::optional<uint32_t> graphics_family;
+
+  bool is_complete() { return graphics_family.has_value(); }
+};
 
 class vk_loader {
 
@@ -36,14 +43,18 @@ class vk_loader {
   }; // Debug callback to show warning and up error messages
 
   //---------------Member data-------------------------
-  VkInstance m_instance;
+  VkInstance m_instance; // Instance
+
   std::vector<VkPhysicalDevice> m_physical_devices;
-  VkPhysicalDevice m_selected_physical_device = VK_NULL_HANDLE;
+  VkPhysicalDevice m_selected_physical_device =
+      VK_NULL_HANDLE; // Physical devices
+
+  VkDevice m_logical_device = VK_NULL_HANDLE; // Logical device
+  VkQueue m_graphics_queue;
 
   const std::vector<const char *> m_validation_layers = {
       "VK_LAYER_KHRONOS_validation"};
-
-  VkDebugUtilsMessengerEXT m_debug_messenger;
+  VkDebugUtilsMessengerEXT m_debug_messenger; // Debug
 
   //---------------Member methods----------------------
   void create_instance();
@@ -67,6 +78,8 @@ class vk_loader {
   bool is_device_suitable(VkPhysicalDevice device);
   int rate_physical_device(VkPhysicalDevice device); // Physical devices
 
+  queue_family_indices find_queue_families(VkPhysicalDevice device);
+
 public:
   //---------------Public methods----------------------
   void init_vulkan();
@@ -74,8 +87,10 @@ public:
   void find_physical_devices();
   void pick_physical_device(uint32_t id = 0);
   void pick_best_physical_device();
+  void create_logical_device();
   VkInstance get_vk_instance();
   VkPhysicalDevice get_selected_physical_device();
   std::vector<VkPhysicalDevice> get_physical_devices();
+  VkDevice get_logical_device();
   void destroy_vulkan();
 };

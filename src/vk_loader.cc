@@ -8,6 +8,7 @@
 #include <cstring>
 #include <map>
 #include <stdexcept>
+#include <vector>
 #include <vk_loader.hh>
 #include <vulkan/vulkan_core.h>
 
@@ -91,12 +92,16 @@ void vk_loader::setup_debug_messenger() {
 }
 
 VkInstance vk_loader::get_vk_instance() { return m_instance; }
+
 VkPhysicalDevice vk_loader::get_selected_physical_device() {
   return m_selected_physical_device;
 }
+
 std::vector<VkPhysicalDevice> vk_loader::get_physical_devices() {
   return m_physical_devices;
 }
+
+VkDevice vk_loader::get_logical_device() { return m_logical_device; }
 
 /**
  * @brief This function will return true if and only if all the validation layer
@@ -179,8 +184,15 @@ bool vk_loader::is_device_suitable(VkPhysicalDevice device) {
   vkGetPhysicalDeviceProperties(device, &device_properties);
   vkGetPhysicalDeviceFeatures(device, &device_features);
 
-  return device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU &&
-         device_features.geometryShader;
+  if (!(device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU &&
+        device_features.geometryShader))
+    return false;
+
+  queue_family_indices indices = find_queue_families(device);
+  if (!indices.is_complete())
+    return false;
+
+  return true;
 }
 
 /**
@@ -234,6 +246,10 @@ void vk_loader::pick_best_physical_device() {
 
 int vk_loader::rate_physical_device(VkPhysicalDevice device) {
 
+  if (!is_device_suitable(device)) {
+    return 0;
+  }
+
   VkPhysicalDeviceProperties device_properties;
   VkPhysicalDeviceFeatures device_features;
   vkGetPhysicalDeviceProperties(device, &device_properties);
@@ -257,7 +273,74 @@ int vk_loader::rate_physical_device(VkPhysicalDevice device) {
   return score;
 }
 
+queue_family_indices vk_loader::find_queue_families(VkPhysicalDevice device) {
+  queue_family_indices indices;
+
+  uint32_t queue_family_count = 0;
+  vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count,
+                                           nullptr);
+
+  std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
+  vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count,
+                                           queue_families.data());
+
+  int i = 0;
+  for (const auto &queue_family : queue_families) {
+    if (queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+      indices.graphics_family = i;
+    }
+
+    if (indices.is_complete())
+      break;
+
+    i++;
+  }
+
+  return indices;
+}
+
+void vk_loader::create_logical_device() {
+  queue_family_indices indices =
+      find_queue_families(m_selected_physical_device);
+
+  VkDeviceQueueCreateInfo queue_create_info{};
+  queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+  queue_create_info.queueFamilyIndex = indices.graphics_family.value();
+  queue_create_info.queueCount = 1;
+
+  float queue_priority = 1.0f;
+  queue_create_info.pQueuePriorities = &queue_priority;
+
+  VkPhysicalDeviceFeatures device_features{}; // TODO: Add required features
+
+  VkDeviceCreateInfo create_info{};
+  create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+  create_info.pQueueCreateInfos = &queue_create_info;
+  create_info.queueCreateInfoCount = 1;
+
+  create_info.pEnabledFeatures = &device_features;
+
+  create_info.enabledExtensionCount = 0;
+
+  if (M_ENABLE_VALIDATION_LAYERS) {
+    create_info.enabledLayerCount =
+        static_cast<uint32_t>(m_validation_layers.size());
+    create_info.ppEnabledLayerNames = m_validation_layers.data();
+  } else {
+    create_info.enabledLayerCount = 0;
+  }
+
+  if (vkCreateDevice(m_selected_physical_device, &create_info, nullptr,
+                     &m_logical_device) != VK_SUCCESS) {
+    throw std::runtime_error("Failed to create logical device");
+  }
+
+  vkGetDeviceQueue(m_logical_device, indices.graphics_family.value(), 0,
+                   &m_graphics_queue);
+}
+
 void vk_loader::destroy_vulkan() {
+  vkDestroyDevice(m_logical_device, nullptr);
   if (M_ENABLE_VALIDATION_LAYERS) {
     destroy_debug_utils_messenger_ext(m_instance, m_debug_messenger, nullptr);
   }
