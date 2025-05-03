@@ -72,6 +72,10 @@ class vk_loader {
       VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
   VkSurfaceKHR m_surface;
+  VkSwapchainKHR m_swapchain;
+  std::vector<VkImage> m_swapchain_images;
+  VkFormat m_swapchain_image_format;
+  VkExtent2D m_swapchain_extent;
 
   //---------------Member methods----------------------
   void create_instance();
@@ -98,6 +102,12 @@ class vk_loader {
   int rate_physical_device(VkPhysicalDevice device); // Physical devices
 
   queue_family_indices find_queue_families(VkPhysicalDevice device);
+  VkPresentModeKHR choose_swap_present_mode(
+      const std::vector<VkPresentModeKHR> &available_present_modes);
+  VkExtent2D choose_swap_extent(const VkSurfaceCapabilitiesKHR &capabilities,
+                                GLFWwindow *window);
+  VkSurfaceFormatKHR choose_swap_surface_format(
+      const std::vector<VkSurfaceFormatKHR> available_formats); // Swap chain
 
 public:
   //---------------Public methods----------------------
@@ -108,6 +118,7 @@ public:
   void pick_physical_device(uint32_t id = 0);
   void pick_best_physical_device();
   void create_logical_device();
+  void create_swap_chain(GLFWwindow *window);
   VkInstance get_vk_instance();
   VkPhysicalDevice get_selected_physical_device();
   std::vector<VkPhysicalDevice> get_physical_devices();
