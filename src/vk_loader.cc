@@ -9,6 +9,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <algorithm>
+#include <create_shader_module.hh>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -566,17 +567,42 @@ void vk_loader::create_def_graphics_pipeline() {
   std::string vert_path = "shaders/def.vert";
   std::string frag_path = "shaders/def.frag";
 
-  std::string command = "./shaders/compile_shader.sh";
+  std::string command = "./shaders/compile_shader.sh ";
   std::string comman_vert = command + vert_path;
   std::string comman_frag = command + frag_path;
 
   int result_vert = std::system(comman_vert.c_str());
   int result_frag = std::system(comman_frag.c_str()); // Compile the shaders
 
+  // TODO: Encapsulate shader compilation into a util function
+
   auto vert_shader_code = utils::read_file("shaders/def.vert.spv");
   auto frag_shader_code = utils::read_file("shaders/def.frag.spv");
 
-  // TODO: Create shader module
+  VkShaderModule vert_shader_module =
+      utils::crete_shader_module(vert_shader_code, m_logical_device);
+  VkShaderModule frag_shader_module =
+      utils::crete_shader_module(frag_shader_code, m_logical_device);
+
+  m_def_shader[0] = vert_shader_module;
+  m_def_shader[1] = frag_shader_module;
+
+  VkPipelineShaderStageCreateInfo vert_shader_stage_info{};
+  vert_shader_stage_info.sType =
+      VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  vert_shader_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
+  vert_shader_stage_info.module = vert_shader_module;
+  vert_shader_stage_info.pName = "main";
+
+  VkPipelineShaderStageCreateInfo frag_shader_stage_info{};
+  frag_shader_stage_info.sType =
+      VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  frag_shader_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+  frag_shader_stage_info.module = frag_shader_module;
+  vert_shader_stage_info.pName = "main";
+
+  VkPipelineShaderStageCreateInfo shader_stages[] = {vert_shader_stage_info,
+                                                     frag_shader_stage_info};
 }
 
 void vk_loader::destroy_vulkan() {
@@ -584,12 +610,14 @@ void vk_loader::destroy_vulkan() {
     vkDestroyImageView(m_logical_device, image_view, nullptr);
   }
   vkDestroySwapchainKHR(m_logical_device, m_swapchain, nullptr);
+
+  vkDestroyShaderModule(m_logical_device, m_def_shader[0], nullptr);
+  vkDestroyShaderModule(m_logical_device, m_def_shader[1], nullptr);
+
   vkDestroyDevice(m_logical_device, nullptr);
   if (M_ENABLE_VALIDATION_LAYERS) {
     destroy_debug_utils_messenger_ext(m_instance, m_debug_messenger, nullptr);
   }
   vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
   vkDestroyInstance(m_instance, nullptr);
-  vkDestroyShaderModule(m_logical_device, m_def_shader[0], nullptr);
-  vkDestroyShaderModule(m_logical_device, m_def_shader[1], nullptr);
 }

@@ -7,6 +7,7 @@
 
 #pragma once
 #include <vector>
+#include <vulkan/vulkan_core.h>
 
 namespace utils {
 
@@ -14,5 +15,6 @@ namespace utils {
  * @brief Creates a shader module based on the provided code
  */
 
-std::vector<char> crete_shader_module(const std::vector<char> &code);
+VkShaderModule crete_shader_module(const std::vector<char> &code,
+                                   VkDevice logical_device);
 } // namespace utils

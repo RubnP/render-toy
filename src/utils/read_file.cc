@@ -9,7 +9,7 @@
 #include <stdexcept>
 #include <unistd.h>
 
-using namespace utils;
+namespace utils {
 
 std::vector<char> read_file(const std::string &filename) {
   std::ifstream file(filename, std::ios::ate | std::ios::binary);
@@ -28,3 +28,4 @@ std::vector<char> read_file(const std::string &filename) {
 
   return buffer;
 }
+} // namespace utils
