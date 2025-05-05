@@ -26,6 +26,8 @@ void rt_app::init_vulkan() {
                                            // user to select once in the app?
   m_vk_loader.create_logical_device();
   m_vk_loader.create_swap_chain(m_window_manager.get_main_window());
+  m_vk_loader.create_swap_chain_image_views();
+  m_vk_loader.create_graphics_pipeline();
 }
 
 void rt_app::main_loop() {

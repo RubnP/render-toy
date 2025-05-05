@@ -5,13 +5,16 @@
  */
 
 #include <limits>
+#include <string>
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <algorithm>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <limits.h>
 #include <map>
+#include <read_file.hh>
 #include <set>
 #include <stdexcept>
 #include <vector>
@@ -533,7 +536,53 @@ void vk_loader::create_swap_chain(GLFWwindow *window) {
   m_swapchain_extent = extent;
 }
 
+void vk_loader::create_swap_chain_image_views() {
+  m_swapchain_image_views.resize(m_swapchain_images.size());
+
+  for (size_t i = 0; i < m_swapchain_images.size(); i++) {
+    VkImageViewCreateInfo create_info{};
+    create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    create_info.image = m_swapchain_images[i];
+    create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    create_info.format = m_swapchain_image_format;
+    create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+    create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+    create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+    create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+    create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    create_info.subresourceRange.baseMipLevel = 0;
+    create_info.subresourceRange.levelCount = 1;
+    create_info.subresourceRange.baseArrayLayer = 0;
+    create_info.subresourceRange.layerCount = 1;
+
+    if (vkCreateImageView(m_logical_device, &create_info, nullptr,
+                          &m_swapchain_image_views[i]) != VK_SUCCESS) {
+      throw std::runtime_error("Failed to create image views");
+    }
+  }
+}
+
+void vk_loader::create_def_graphics_pipeline() {
+  std::string vert_path = "shaders/def.vert";
+  std::string frag_path = "shaders/def.frag";
+
+  std::string command = "./shaders/compile_shader.sh";
+  std::string comman_vert = command + vert_path;
+  std::string comman_frag = command + frag_path;
+
+  int result_vert = std::system(comman_vert.c_str());
+  int result_frag = std::system(comman_frag.c_str()); // Compile the shaders
+
+  auto vert_shader_code = utils::read_file("shaders/def.vert.spv");
+  auto frag_shader_code = utils::read_file("shaders/def.frag.spv");
+
+  // TODO: Create shader module
+}
+
 void vk_loader::destroy_vulkan() {
+  for (auto image_view : m_swapchain_image_views) {
+    vkDestroyImageView(m_logical_device, image_view, nullptr);
+  }
   vkDestroySwapchainKHR(m_logical_device, m_swapchain, nullptr);
   vkDestroyDevice(m_logical_device, nullptr);
   if (M_ENABLE_VALIDATION_LAYERS) {
@@ -541,4 +590,6 @@ void vk_loader::destroy_vulkan() {
   }
   vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
   vkDestroyInstance(m_instance, nullptr);
+  vkDestroyShaderModule(m_logical_device, m_def_shader[0], nullptr);
+  vkDestroyShaderModule(m_logical_device, m_def_shader[1], nullptr);
 }

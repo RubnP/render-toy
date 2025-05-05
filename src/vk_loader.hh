@@ -74,8 +74,10 @@ class vk_loader {
   VkSurfaceKHR m_surface;
   VkSwapchainKHR m_swapchain;
   std::vector<VkImage> m_swapchain_images;
+  std::vector<VkImageView> m_swapchain_image_views;
   VkFormat m_swapchain_image_format;
   VkExtent2D m_swapchain_extent;
+  VkShaderModule m_def_shader[2];
 
   //---------------Member methods----------------------
   void create_instance();
@@ -119,6 +121,8 @@ public:
   void pick_best_physical_device();
   void create_logical_device();
   void create_swap_chain(GLFWwindow *window);
+  void create_swap_chain_image_views();
+  void create_def_graphics_pipeline();
   VkInstance get_vk_instance();
   VkPhysicalDevice get_selected_physical_device();
   std::vector<VkPhysicalDevice> get_physical_devices();

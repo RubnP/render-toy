@@ -7,6 +7,7 @@ file(COPY shaders DESTINATION "${CMAKE_CURRENT_BINARY_DIR}") # Copy shaders and 
 file (GLOB render-toy-src
   "src/*.cc"
   "src/platform/*.cc"
+  "src/utils/*.cc"
 
   # Imgui
   "include/imgui/*.cpp"
@@ -29,6 +30,7 @@ target_include_directories(render-toy PRIVATE "include/imgui/")
 target_include_directories(render-toy PRIVATE "include/imgui/backends")
 target_include_directories(render-toy PUBLIC "src/")
 target_include_directories(render-toy PUBLIC "src/platform")
+target_include_directories(render-toy PUBLIC "src/utils")
 
 add_subdirectory(include/tinygltf/)
 add_subdirectory(include/tinyobjloader/)
