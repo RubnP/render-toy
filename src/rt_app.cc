@@ -27,6 +27,7 @@ void rt_app::init_vulkan() {
   m_vk_loader.create_logical_device();
   m_vk_loader.create_swap_chain(m_window_manager.get_main_window());
   m_vk_loader.create_swap_chain_image_views();
+  m_vk_loader.create_render_pass();
   m_vk_loader.create_def_graphics_pipeline();
 }
 

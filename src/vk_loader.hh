@@ -78,6 +78,9 @@ class vk_loader {
   VkFormat m_swapchain_image_format;
   VkExtent2D m_swapchain_extent;
   VkShaderModule m_def_shader[2];
+  VkRenderPass m_render_pass;
+  VkPipelineLayout m_pipeline_layout;
+  VkPipeline m_graphics_pipeline;
 
   //---------------Member methods----------------------
   void create_instance();
@@ -122,6 +125,7 @@ public:
   void create_logical_device();
   void create_swap_chain(GLFWwindow *window);
   void create_swap_chain_image_views();
+  void create_render_pass();
   void create_def_graphics_pipeline();
   VkInstance get_vk_instance();
   VkPhysicalDevice get_selected_physical_device();
