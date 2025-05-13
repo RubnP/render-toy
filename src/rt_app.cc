@@ -29,6 +29,7 @@ void rt_app::init_vulkan() {
   m_vk_loader.create_swap_chain_image_views();
   m_vk_loader.create_render_pass();
   m_vk_loader.create_def_graphics_pipeline();
+  m_vk_loader.create_framebuffers();
 }
 
 void rt_app::main_loop() {
