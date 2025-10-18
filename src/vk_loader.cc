@@ -38,6 +38,10 @@ void vk_loader::create_instance() {
   VkApplicationInfo app_info{};
   app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
   app_info.pApplicationName = "render-toy";
+  app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+  app_info.pEngineName = "render-toy";
+  app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+  app_info.apiVersion = VK_API_VERSION_1_0;
 
   VkInstanceCreateInfo create_info{};
   create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -599,7 +603,7 @@ void vk_loader::create_def_graphics_pipeline() {
       VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
   frag_shader_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
   frag_shader_stage_info.module = frag_shader_module;
-  vert_shader_stage_info.pName = "main";
+  frag_shader_stage_info.pName = "main";
 
   VkPipelineShaderStageCreateInfo shader_stages[] = {vert_shader_stage_info,
                                                      frag_shader_stage_info};
@@ -761,6 +765,18 @@ void vk_loader::create_framebuffers() {
       throw std::runtime_error("failed to create framebuffer");
     }
   }
+}
+
+void vk_loader::create_comman_pool() {
+  queue_family_indices queue_fi =
+      find_queue_families(m_selected_physical_device);
+
+  VkCommandPoolCreateInfo pool_info{};
+  pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+  pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+  pool_info.queueFamilyIndex = queue_fi.graphics_family.value();
+
+  // TODO: Finish this
 }
 
 void vk_loader::destroy_vulkan() {

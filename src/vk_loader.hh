@@ -129,6 +129,7 @@ public:
   void create_render_pass();
   void create_def_graphics_pipeline();
   void create_framebuffers();
+  void create_comman_pool();
   VkInstance get_vk_instance();
   VkPhysicalDevice get_selected_physical_device();
   std::vector<VkPhysicalDevice> get_physical_devices();
