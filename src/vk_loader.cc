@@ -767,7 +767,7 @@ void vk_loader::create_framebuffers() {
   }
 }
 
-void vk_loader::create_comman_pool() {
+void vk_loader::create_command_pool() {
   queue_family_indices queue_fi =
       find_queue_families(m_selected_physical_device);
 
@@ -776,8 +776,33 @@ void vk_loader::create_comman_pool() {
   pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
   pool_info.queueFamilyIndex = queue_fi.graphics_family.value();
 
-  // TODO: Finish this
+  if (vkCreateCommandPool(m_logical_device, &pool_info, nullptr,
+                          &m_command_pool) != VK_SUCCESS) {
+    throw std::runtime_error("failed to create command pool");
+  }
 }
+
+void vk_loader::create_command_buffer() {
+  VkCommandBufferAllocateInfo alloc_info{};
+  alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+  alloc_info.commandPool = m_command_pool;
+  alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+  alloc_info.commandBufferCount = 1;
+
+  if (vkAllocateCommandBuffers(m_logical_device, &alloc_info,
+                               &m_command_buffer) != VK_SUCCESS) {
+    throw std::runtime_error("failed to allocate command buffer");
+  }
+}
+
+VkCommandBuffer vk_loader::get_command_buffer() { return m_command_buffer; }
+VkRenderPass vk_loader::get_render_pass() { return m_render_pass; }
+std::vector<VkFramebuffer> *vk_loader::get_swap_chain_framebuffers() {
+  return &m_swapchain_framebuffers;
+}
+
+VkExtent2D vk_loader::get_swap_chain_extent() { return m_swapchain_extent; }
+VkPipeline vk_loader::get_graphics_pipeline() { return m_graphics_pipeline; }
 
 void vk_loader::destroy_vulkan() {
 

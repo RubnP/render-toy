@@ -82,6 +82,8 @@ class vk_loader {
   VkRenderPass m_render_pass;
   VkPipelineLayout m_pipeline_layout;
   VkPipeline m_graphics_pipeline;
+  VkCommandPool m_command_pool;
+  VkCommandBuffer m_command_buffer; // Vulkan command storage
 
   //---------------Member methods----------------------
   void create_instance();
@@ -129,10 +131,17 @@ public:
   void create_render_pass();
   void create_def_graphics_pipeline();
   void create_framebuffers();
-  void create_comman_pool();
+  void create_command_pool();
+  void create_command_buffer();
   VkInstance get_vk_instance();
   VkPhysicalDevice get_selected_physical_device();
   std::vector<VkPhysicalDevice> get_physical_devices();
   VkDevice get_logical_device();
+  VkCommandBuffer get_command_buffer();
+  VkRenderPass get_render_pass();
+  std::vector<VkFramebuffer> *get_swap_chain_framebuffers();
+  VkExtent2D get_swap_chain_extent();
+  VkPipeline get_graphics_pipeline();
+
   void destroy_vulkan();
 };
