@@ -23,7 +23,7 @@ struct queue_family_indices {
   }
 };
 
-struct swap_chain_support_details {
+struct swapchain_support_details {
   VkSurfaceCapabilitiesKHR capabilities;
   std::vector<VkSurfaceFormatKHR> formats;
   std::vector<VkPresentModeKHR> present_modes;
@@ -106,7 +106,7 @@ class vk_loader {
 
   bool is_device_suitable(VkPhysicalDevice device);
   bool check_device_extension_support(VkPhysicalDevice device);
-  swap_chain_support_details query_swap_chain_support(VkPhysicalDevice device);
+  swapchain_support_details query_swapchain_support(VkPhysicalDevice device);
   int rate_physical_device(VkPhysicalDevice device); // Physical devices
 
   queue_family_indices find_queue_families(VkPhysicalDevice device);
@@ -126,8 +126,8 @@ public:
   void pick_physical_device(uint32_t id = 0);
   void pick_best_physical_device();
   void create_logical_device();
-  void create_swap_chain(GLFWwindow *window);
-  void create_swap_chain_image_views();
+  void create_swapchain(GLFWwindow *window);
+  void create_swapchain_image_views();
   void create_render_pass();
   void create_def_graphics_pipeline();
   void create_framebuffers();
@@ -139,9 +139,12 @@ public:
   VkDevice get_logical_device();
   VkCommandBuffer get_command_buffer();
   VkRenderPass get_render_pass();
-  std::vector<VkFramebuffer> *get_swap_chain_framebuffers();
-  VkExtent2D get_swap_chain_extent();
+  std::vector<VkFramebuffer> *get_swapchain_framebuffers();
+  VkSwapchainKHR get_swapchain();
+  VkExtent2D get_swapchain_extent();
   VkPipeline get_graphics_pipeline();
+  VkQueue get_graphics_queue();
+  VkQueue get_present_queue();
 
   void destroy_vulkan();
 };

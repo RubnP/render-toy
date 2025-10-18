@@ -216,16 +216,16 @@ bool vk_loader::is_device_suitable(VkPhysicalDevice device) {
   if (!check_device_extension_support(device))
     return false;
 
-  bool swap_chain_suitable = false;
+  bool swapchain_suitable = false;
 
   if (check_device_extension_support(device)) {
-    swap_chain_support_details swap_chain_support =
-        query_swap_chain_support(device);
-    swap_chain_suitable = !swap_chain_support.formats.empty() &&
-                          !swap_chain_support.present_modes.empty();
+    swapchain_support_details swapchain_support =
+        query_swapchain_support(device);
+    swapchain_suitable = !swapchain_support.formats.empty() &&
+                         !swapchain_support.present_modes.empty();
   }
 
-  if (!swap_chain_suitable)
+  if (!swapchain_suitable)
     return false;
 
   return true;
@@ -248,9 +248,9 @@ bool vk_loader::check_device_extension_support(VkPhysicalDevice device) {
   return required_extensions.empty();
 }
 
-swap_chain_support_details
-vk_loader::query_swap_chain_support(VkPhysicalDevice device) {
-  swap_chain_support_details details;
+swapchain_support_details
+vk_loader::query_swapchain_support(VkPhysicalDevice device) {
+  swapchain_support_details details;
 
   vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, m_surface,
                                             &details.capabilities);
@@ -480,21 +480,21 @@ vk_loader::choose_swap_extent(const VkSurfaceCapabilitiesKHR &capabilities,
   }
 }
 
-void vk_loader::create_swap_chain(GLFWwindow *window) {
-  swap_chain_support_details swap_chain_support =
-      query_swap_chain_support(m_selected_physical_device);
+void vk_loader::create_swapchain(GLFWwindow *window) {
+  swapchain_support_details swapchain_support =
+      query_swapchain_support(m_selected_physical_device);
 
   VkSurfaceFormatKHR surface_format =
-      choose_swap_surface_format(swap_chain_support.formats);
+      choose_swap_surface_format(swapchain_support.formats);
   VkPresentModeKHR present_mode =
-      choose_swap_present_mode(swap_chain_support.present_modes);
+      choose_swap_present_mode(swapchain_support.present_modes);
   VkExtent2D extent =
-      choose_swap_extent(swap_chain_support.capabilities, window);
+      choose_swap_extent(swapchain_support.capabilities, window);
 
-  uint32_t image_count = swap_chain_support.capabilities.minImageCount + 1;
-  if (swap_chain_support.capabilities.maxImageCount > 0 &&
-      image_count > swap_chain_support.capabilities.maxImageCount) {
-    uint32_t image_count = swap_chain_support.capabilities.maxImageCount;
+  uint32_t image_count = swapchain_support.capabilities.minImageCount + 1;
+  if (swapchain_support.capabilities.maxImageCount > 0 &&
+      image_count > swapchain_support.capabilities.maxImageCount) {
+    uint32_t image_count = swapchain_support.capabilities.maxImageCount;
   }
 
   VkSwapchainCreateInfoKHR create_info{};
@@ -522,7 +522,7 @@ void vk_loader::create_swap_chain(GLFWwindow *window) {
     create_info.pQueueFamilyIndices = nullptr;
   }
 
-  create_info.preTransform = swap_chain_support.capabilities.currentTransform;
+  create_info.preTransform = swapchain_support.capabilities.currentTransform;
   create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
   create_info.presentMode = present_mode;
   create_info.clipped = VK_TRUE;
@@ -541,7 +541,7 @@ void vk_loader::create_swap_chain(GLFWwindow *window) {
   m_swapchain_extent = extent;
 }
 
-void vk_loader::create_swap_chain_image_views() {
+void vk_loader::create_swapchain_image_views() {
   m_swapchain_image_views.resize(m_swapchain_images.size());
 
   for (size_t i = 0; i < m_swapchain_images.size(); i++) {
@@ -732,12 +732,25 @@ void vk_loader::create_render_pass() {
   subpass.colorAttachmentCount = 1;
   subpass.pColorAttachments = &color_attachment_ref;
 
+  VkSubpassDependency dependency{};
+  dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+  dependency.dstSubpass = 0;
+
+  dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+  dependency.srcAccessMask = 0;
+
+  dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+  dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
   VkRenderPassCreateInfo render_pass_info{};
   render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
   render_pass_info.attachmentCount = 1;
   render_pass_info.pAttachments = &color_attachment;
   render_pass_info.subpassCount = 1;
   render_pass_info.pSubpasses = &subpass;
+
+  render_pass_info.dependencyCount = 1;
+  render_pass_info.pDependencies = &dependency;
 
   if (vkCreateRenderPass(m_logical_device, &render_pass_info, nullptr,
                          &m_render_pass) != VK_SUCCESS) {
@@ -797,12 +810,15 @@ void vk_loader::create_command_buffer() {
 
 VkCommandBuffer vk_loader::get_command_buffer() { return m_command_buffer; }
 VkRenderPass vk_loader::get_render_pass() { return m_render_pass; }
-std::vector<VkFramebuffer> *vk_loader::get_swap_chain_framebuffers() {
+std::vector<VkFramebuffer> *vk_loader::get_swapchain_framebuffers() {
   return &m_swapchain_framebuffers;
 }
 
-VkExtent2D vk_loader::get_swap_chain_extent() { return m_swapchain_extent; }
+VkSwapchainKHR vk_loader::get_swapchain() { return m_swapchain; }
+VkExtent2D vk_loader::get_swapchain_extent() { return m_swapchain_extent; }
 VkPipeline vk_loader::get_graphics_pipeline() { return m_graphics_pipeline; }
+VkQueue vk_loader::get_graphics_queue() { return m_graphics_queue; }
+VkQueue vk_loader::get_present_queue() { return m_present_queue; }
 
 void vk_loader::destroy_vulkan() {
 
