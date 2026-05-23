@@ -1,7 +1,9 @@
 /**
  * @file
  * @author Ruben Pena <rubn.pena@gmail.com>
- * @brief This file contains the implementation of the vulkan loader class
+ * @brief This file contains the implementation of the vulkan loader class.
+ * This loader is based on the tutorial that can be found at:
+ * vulkan-tutorial.com
  */
 
 #include <limits>
@@ -795,20 +797,23 @@ void vk_loader::create_command_pool() {
   }
 }
 
-void vk_loader::create_command_buffer() {
+void vk_loader::create_command_buffers(const int max_frames_in_flight) {
+  m_command_buffers.resize(max_frames_in_flight);
   VkCommandBufferAllocateInfo alloc_info{};
   alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
   alloc_info.commandPool = m_command_pool;
   alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  alloc_info.commandBufferCount = 1;
+  alloc_info.commandBufferCount = static_cast<uint32_t>(max_frames_in_flight);
 
   if (vkAllocateCommandBuffers(m_logical_device, &alloc_info,
-                               &m_command_buffer) != VK_SUCCESS) {
+                               m_command_buffers.data()) != VK_SUCCESS) {
     throw std::runtime_error("failed to allocate command buffer");
   }
 }
 
-VkCommandBuffer vk_loader::get_command_buffer() { return m_command_buffer; }
+std::vector<VkCommandBuffer> vk_loader::get_command_buffers() {
+  return m_command_buffers;
+}
 VkRenderPass vk_loader::get_render_pass() { return m_render_pass; }
 std::vector<VkFramebuffer> *vk_loader::get_swapchain_framebuffers() {
   return &m_swapchain_framebuffers;

@@ -76,6 +76,9 @@ class vk_loader {
   std::vector<VkImage> m_swapchain_images;
   std::vector<VkImageView> m_swapchain_image_views;
   std::vector<VkFramebuffer> m_swapchain_framebuffers;
+  std::vector<VkCommandBuffer>
+      m_command_buffers; // Multiple command buffers for frames in flight
+
   VkFormat m_swapchain_image_format;
   VkExtent2D m_swapchain_extent;
   VkShaderModule m_def_shader[2];
@@ -83,7 +86,6 @@ class vk_loader {
   VkPipelineLayout m_pipeline_layout;
   VkPipeline m_graphics_pipeline;
   VkCommandPool m_command_pool;
-  VkCommandBuffer m_command_buffer; // Vulkan command storage
 
   //---------------Member methods----------------------
   void create_instance();
@@ -132,12 +134,12 @@ public:
   void create_def_graphics_pipeline();
   void create_framebuffers();
   void create_command_pool();
-  void create_command_buffer();
+  void create_command_buffers(const int max_frames_in_flight);
   VkInstance get_vk_instance();
   VkPhysicalDevice get_selected_physical_device();
   std::vector<VkPhysicalDevice> get_physical_devices();
   VkDevice get_logical_device();
-  VkCommandBuffer get_command_buffer();
+  std::vector<VkCommandBuffer> get_command_buffers();
   VkRenderPass get_render_pass();
   std::vector<VkFramebuffer> *get_swapchain_framebuffers();
   VkSwapchainKHR get_swapchain();

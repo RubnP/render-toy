@@ -34,7 +34,7 @@ void rt_app::init_vulkan() {
   m_vk_loader.create_def_graphics_pipeline();
   m_vk_loader.create_framebuffers();
   m_vk_loader.create_command_pool();
-  m_vk_loader.create_command_buffer();
+  m_vk_loader.create_command_buffers(MAX_FRAMES_IN_FLIGHT);
   create_sync_objects();
 }
 
@@ -48,29 +48,43 @@ void rt_app::main_loop() {
 }
 
 void rt_app::shutdown() {
-  vkDestroySemaphore(m_vk_loader.get_logical_device(),
-                     m_image_available_semaphore, nullptr);
-  vkDestroySemaphore(m_vk_loader.get_logical_device(),
-                     m_render_finished_semaphore, nullptr);
-  vkDestroyFence(m_vk_loader.get_logical_device(), m_in_fight_fence, nullptr);
-  m_window_manager.destroy_window();
-  m_vk_loader.destroy_vulkan();
+  for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+    vkDestroySemaphore(m_vk_loader.get_logical_device(),
+                       m_render_finished_semaphores[i], nullptr);
+    vkDestroySemaphore(m_vk_loader.get_logical_device(),
+                       m_image_available_semaphores[i], nullptr);
+    vkDestroyFence(m_vk_loader.get_logical_device(), m_in_flight_fences[i],
+                   nullptr);
+    m_window_manager.destroy_window();
+    m_vk_loader.destroy_vulkan();
+  }
 }
 
 void rt_app::create_sync_objects() {
+
+  m_image_available_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
+  m_render_finished_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
+  m_in_flight_fences.resize(MAX_FRAMES_IN_FLIGHT);
+
   VkSemaphoreCreateInfo semaphore_info{};
   semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
   VkFenceCreateInfo fence_info{};
   fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
   fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-  if (vkCreateSemaphore(m_vk_loader.get_logical_device(), &semaphore_info,
-                        nullptr, &m_image_available_semaphore) ||
-      vkCreateSemaphore(m_vk_loader.get_logical_device(), &semaphore_info,
-                        nullptr, &m_render_finished_semaphore) ||
-      vkCreateFence(m_vk_loader.get_logical_device(), &fence_info, nullptr,
-                    &m_in_fight_fence) != VK_SUCCESS) {
-    throw std::runtime_error("failed to create semaphores!");
+  for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
+
+    if (vkCreateSemaphore(m_vk_loader.get_logical_device(), &semaphore_info,
+                          nullptr,
+                          &m_image_available_semaphores[i]) != VK_SUCCESS ||
+        vkCreateSemaphore(m_vk_loader.get_logical_device(), &semaphore_info,
+                          nullptr,
+                          &m_render_finished_semaphores[i]) != VK_SUCCESS ||
+        vkCreateFence(m_vk_loader.get_logical_device(), &fence_info, nullptr,
+                      &m_in_flight_fences[i]) != VK_SUCCESS) {
+      throw std::runtime_error("failed to create semaphores!");
+    }
   }
 }
 
@@ -129,21 +143,23 @@ void rt_app::record_command_buffer(VkCommandBuffer command_buffer,
 
 void rt_app::draw_frame() {
   VkDevice device = m_vk_loader.get_logical_device();
-  vkWaitForFences(device, 1, &m_in_fight_fence, VK_TRUE, UINT64_MAX);
-  vkResetFences(device, 1, &m_in_fight_fence);
+  vkWaitForFences(device, 1, &m_in_flight_fences[current_frame], VK_TRUE,
+                  UINT64_MAX);
+  vkResetFences(device, 1, &m_in_flight_fences[current_frame]);
 
   uint32_t img_index;
   vkAcquireNextImageKHR(device, m_vk_loader.get_swapchain(), UINT64_MAX,
-                        m_image_available_semaphore, VK_NULL_HANDLE,
-                        &img_index);
-  vkResetCommandBuffer(m_vk_loader.get_command_buffer(), 0);
-  record_command_buffer(m_vk_loader.get_command_buffer(), img_index);
+                        m_image_available_semaphores[current_frame],
+                        VK_NULL_HANDLE, &img_index);
+  vkResetCommandBuffer(m_vk_loader.get_command_buffers()[current_frame], 0);
+  record_command_buffer(m_vk_loader.get_command_buffers()[current_frame],
+                        img_index);
 
   // Submit the recorded command buffer to draw
 
   VkSubmitInfo submit_info{};
   submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  VkSemaphore wait_semaphores[] = {m_image_available_semaphore};
+  VkSemaphore wait_semaphores[] = {m_image_available_semaphores[current_frame]};
   VkPipelineStageFlags wait_stages[] = {
       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
   submit_info.waitSemaphoreCount = 1;
@@ -151,14 +167,16 @@ void rt_app::draw_frame() {
   submit_info.pWaitDstStageMask = wait_stages;
 
   submit_info.commandBufferCount = 1;
-  VkCommandBuffer command_buffer = m_vk_loader.get_command_buffer();
+  VkCommandBuffer command_buffer =
+      m_vk_loader.get_command_buffers()[current_frame];
   submit_info.pCommandBuffers = &command_buffer;
 
-  VkSemaphore signal_semaphores[] = {m_render_finished_semaphore};
+  VkSemaphore signal_semaphores[] = {
+      m_render_finished_semaphores[current_frame]};
   submit_info.signalSemaphoreCount = 1;
   submit_info.pSignalSemaphores = signal_semaphores;
   if (vkQueueSubmit(m_vk_loader.get_graphics_queue(), 1, &submit_info,
-                    m_in_fight_fence) != VK_SUCCESS) {
+                    m_in_flight_fences[current_frame]) != VK_SUCCESS) {
     throw std::runtime_error("failed to submit draw command buffer");
   }
 
@@ -174,4 +192,6 @@ void rt_app::draw_frame() {
 
   present_info.pResults = nullptr;
   vkQueuePresentKHR(m_vk_loader.get_present_queue(), &present_info);
+
+  current_frame = (current_frame + 1) % MAX_FRAMES_IN_FLIGHT; // loop the frames
 }
