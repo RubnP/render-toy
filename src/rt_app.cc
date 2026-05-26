@@ -6,13 +6,20 @@
 
 #include "vk_loader.hh"
 #include <cstdint>
+#include <imgui_hnd.hh>
 #include <rt_app.hh>
 #include <stdexcept>
+#include <sys/types.h>
 #include <vulkan/vulkan_core.h>
 
 void rt_app::run() {
   init_window();
   init_vulkan();
+
+  // Lets add imgui functionality to this fist window TODO: Move this to a
+  // better place
+  imgui_hnd::imgui_init(&m_vk_loader, m_window_manager.get_main_window());
+
   main_loop();
   shutdown();
 }
@@ -22,33 +29,44 @@ void rt_app::init_window() { m_window_manager.init_window(); }
 void rt_app::init_vulkan() {
   m_vk_loader.init_vulkan();
   m_vk_loader.setup_debug_messenger();
-  m_vk_loader.create_surface(m_window_manager.get_main_window());
+  m_vk_loader.create_surface(m_window_manager.get_main_window()->get_window());
   m_vk_loader.find_physical_devices();
   m_vk_loader.pick_best_physical_device(); // TODO: Make something more fancy
                                            // than selecting the first
                                            // compatible GPU. A menu for the
                                            // user to select once in the app?
   m_vk_loader.create_logical_device();
-  m_vk_loader.create_swapchain(m_window_manager.get_main_window());
+  m_vk_loader.create_swapchain(
+      m_window_manager.get_main_window()->get_window());
   m_vk_loader.create_swapchain_image_views();
   m_vk_loader.create_render_pass();
   m_vk_loader.create_def_graphics_pipeline();
   m_vk_loader.create_framebuffers();
   m_vk_loader.create_command_pool();
+  m_vk_loader.create_vertex_buffer(&m_vertices);
   m_vk_loader.create_command_buffers(MAX_FRAMES_IN_FLIGHT);
   create_sync_objects();
 }
 
 void rt_app::main_loop() {
-  while (!glfwWindowShouldClose(m_window_manager.get_main_window())) {
+  while (!glfwWindowShouldClose(
+      m_window_manager.get_main_window()->get_window())) {
+
     glfwPollEvents();
+
+    imgui_hnd::imgui_main_loop_start();
+    imgui_hnd::imgui_main_loop_end(&m_vk_loader, current_frame);
+
     draw_frame();
+    m_window_manager.update_windows();
   }
 
   vkDeviceWaitIdle(m_vk_loader.get_logical_device());
 }
 
 void rt_app::shutdown() {
+  imgui_hnd::imgui_shutdown();
+
   cleanup_swapchain();
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
     vkDestroySemaphore(m_vk_loader.get_logical_device(),
@@ -119,6 +137,10 @@ void rt_app::record_command_buffer(VkCommandBuffer command_buffer,
 
   vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                     m_vk_loader.get_graphics_pipeline());
+
+  VkBuffer vertex_buffers[] = {m_vk_loader.get_vertex_buffer()};
+  VkDeviceSize offsets[] = {0};
+  vkCmdBindVertexBuffers(command_buffer, 0, 1, vertex_buffers, offsets);
 
   VkViewport viewport{};
   viewport.x = 0.0f;
@@ -226,7 +248,8 @@ void rt_app::recreate_swapchain() {
 
   cleanup_swapchain();
 
-  m_vk_loader.create_swapchain(m_window_manager.get_main_window());
+  m_vk_loader.create_swapchain(
+      m_window_manager.get_main_window()->get_window());
   m_vk_loader.create_swapchain_image_views();
   m_vk_loader.create_framebuffers();
 }

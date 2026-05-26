@@ -12,7 +12,16 @@ using namespace platform;
 /**
  * @brief def initialization
  */
-window::window(){};
+window::window(int WIDTH, int HEIGHT) {
+  glfwInit();
+
+  glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+  glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
+
+  m_window = glfwCreateWindow(WIDTH, HEIGHT, "render-toy", nullptr, nullptr);
+};
+
+window::~window() {}
 
 /**
  * @brief initialization with content
@@ -45,3 +54,5 @@ void window::update() {
     fn(); // ImGui behaviour
   }
 }
+
+GLFWwindow *window::get_window() { return m_window; }

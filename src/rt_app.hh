@@ -5,11 +5,21 @@
  */
 
 #pragma once
+#include <glm/glm.hpp>
 #include <platform/window_manager.hh>
+#include <vertex.hh>
 #include <vk_loader.hh>
 #include <vulkan/vulkan_core.h>
 
 class rt_app {
+
+  const std::vector<vertex> m_vertices = {
+      {{0.0f, -0.5f}, {1.0f, 0.5f, 0.5f}},
+      {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+      {{-0.5f, 0.5f},
+       {0.0f, 1.0f,
+        0.0f}}}; // TODO: Eventually change this for proper mesh loading
+
   const int MAX_FRAMES_IN_FLIGHT = 2;
   uint32_t current_frame = 0;
   vk_loader m_vk_loader;

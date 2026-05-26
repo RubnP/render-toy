@@ -11,6 +11,7 @@
 #include <iostream>
 #include <optional>
 #include <vector>
+#include <vertex.hh>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
@@ -87,6 +88,11 @@ class vk_loader {
   VkPipeline m_graphics_pipeline;
   VkCommandPool m_command_pool;
 
+  queue_family_indices m_family_indices;
+
+  VkBuffer m_vertex_buffer;
+  VkDeviceMemory m_vertex_buffer_memory;
+
   //---------------Member methods----------------------
   void create_instance();
   bool check_validation_layer_support();
@@ -134,6 +140,7 @@ public:
   void create_def_graphics_pipeline();
   void create_framebuffers();
   void create_command_pool();
+  void create_vertex_buffer(const std::vector<vertex> *vertices);
   void create_command_buffers(const int max_frames_in_flight);
   VkInstance get_vk_instance();
   VkPhysicalDevice get_selected_physical_device();
@@ -148,6 +155,10 @@ public:
   VkPipeline get_graphics_pipeline();
   VkQueue get_graphics_queue();
   VkQueue get_present_queue();
+  queue_family_indices get_queue_family_indices();
+  VkBuffer get_vertex_buffer();
 
+  uint32_t find_memory_type(uint32_t type_filter,
+                            VkMemoryPropertyFlags property);
   void destroy_vulkan();
 };

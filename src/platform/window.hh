@@ -19,14 +19,16 @@ namespace platform {
  */
 class window {
   std::vector<WINDOW_FUNCTION>
-      m_functions; // ImGui functions that exist in the window
+      m_functions;                // ImGui functions that exist in the window
+  GLFWwindow *m_window = nullptr; // Main program window
 
 public:
-  window();
+  window(int WIDTH, int HEIGHT);
   window(const std::vector<WINDOW_FUNCTION> &funcs);
   void add_functions(const std::vector<WINDOW_FUNCTION> &funcs);
   void add_functions(const WINDOW_FUNCTION &func);
   void update();
+  GLFWwindow *get_window();
   ~window();
 };
 } // namespace platform

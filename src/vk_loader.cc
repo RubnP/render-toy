@@ -21,6 +21,7 @@
 #include <set>
 #include <stdexcept>
 #include <vector>
+#include <vertex.hh>
 #include <vk_loader.hh>
 #include <vulkan/vulkan_core.h>
 
@@ -388,6 +389,7 @@ queue_family_indices vk_loader::find_queue_families(VkPhysicalDevice device) {
 void vk_loader::create_logical_device() {
   queue_family_indices indices =
       find_queue_families(m_selected_physical_device);
+  m_family_indices = indices;
 
   std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
   std::set<uint32_t> unique_queue_families = {indices.graphics_family.value(),
@@ -622,10 +624,15 @@ void vk_loader::create_def_graphics_pipeline() {
   VkPipelineVertexInputStateCreateInfo vertex_input_info{};
   vertex_input_info.sType =
       VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-  vertex_input_info.vertexBindingDescriptionCount = 0;
-  vertex_input_info.pVertexBindingDescriptions = nullptr;
-  vertex_input_info.vertexAttributeDescriptionCount = 0;
-  vertex_input_info.pVertexAttributeDescriptions = nullptr;
+
+  auto binding_description = vertex::get_binding_description();
+  auto attribute_descriptions = vertex::get_attribute_descriptions();
+  vertex_input_info.vertexBindingDescriptionCount = 1;
+  vertex_input_info.vertexAttributeDescriptionCount =
+      static_cast<uint32_t>(attribute_descriptions.size());
+  vertex_input_info.pVertexBindingDescriptions = &binding_description;
+  vertex_input_info.pVertexAttributeDescriptions =
+      attribute_descriptions.data();
 
   VkPipelineInputAssemblyStateCreateInfo input_assembly{};
   input_assembly.sType =
@@ -782,6 +789,62 @@ void vk_loader::create_framebuffers() {
   }
 }
 
+uint32_t vk_loader::find_memory_type(uint32_t type_filter,
+                                     VkMemoryPropertyFlags properties) {
+  VkPhysicalDeviceMemoryProperties mem_properties;
+  vkGetPhysicalDeviceMemoryProperties(m_selected_physical_device,
+                                      &mem_properties);
+
+  for (uint32_t i = 0; i < mem_properties.memoryTypeCount; i++) {
+    if ((type_filter & (1 << i)) &&
+        (mem_properties.memoryTypes[i].propertyFlags & properties) ==
+            properties) {
+      return i;
+    }
+  }
+
+  throw std::runtime_error("failed to find suitable memory type");
+}
+
+void vk_loader::create_vertex_buffer(const std::vector<vertex> *vertices) {
+  VkBufferCreateInfo buffer_info{};
+  buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+  buffer_info.size = sizeof(vertex) * vertices->size();
+  buffer_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+  buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+  if (vkCreateBuffer(m_logical_device, &buffer_info, nullptr,
+                     &m_vertex_buffer) != VK_SUCCESS) {
+    throw std::runtime_error("failed to create vertex buffer");
+  }
+
+  VkMemoryRequirements mem_requirements;
+  vkGetBufferMemoryRequirements(m_logical_device, m_vertex_buffer,
+                                &mem_requirements);
+
+  VkMemoryAllocateInfo alloc_info{};
+  alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+  alloc_info.allocationSize = mem_requirements.size;
+  alloc_info.memoryTypeIndex =
+      find_memory_type(mem_requirements.memoryTypeBits,
+                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                           VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+  if (vkAllocateMemory(m_logical_device, &alloc_info, nullptr,
+                       &m_vertex_buffer_memory) != VK_SUCCESS) {
+    throw std::runtime_error("Failed to allocate memory in the gpu");
+  }
+
+  vkBindBufferMemory(m_logical_device, m_vertex_buffer, m_vertex_buffer_memory,
+                     0);
+
+  void *data;
+  vkMapMemory(m_logical_device, m_vertex_buffer_memory, 0, buffer_info.size, 0,
+              &data);
+  memcpy(data, vertices->data(), buffer_info.size);
+  vkUnmapMemory(m_logical_device, m_vertex_buffer_memory);
+}
+
 void vk_loader::create_command_pool() {
   queue_family_indices queue_fi =
       find_queue_families(m_selected_physical_device);
@@ -830,6 +893,9 @@ VkQueue vk_loader::get_present_queue() { return m_present_queue; }
 
 void vk_loader::destroy_vulkan() {
 
+  vkDestroyBuffer(m_logical_device, m_vertex_buffer, nullptr);
+  vkFreeMemory(m_logical_device, m_vertex_buffer_memory, nullptr);
+
   vkDestroyPipeline(m_logical_device, m_graphics_pipeline, nullptr);
   vkDestroyPipelineLayout(m_logical_device, m_pipeline_layout, nullptr);
   vkDestroyRenderPass(m_logical_device, m_render_pass, nullptr);
@@ -847,3 +913,9 @@ void vk_loader::destroy_vulkan() {
   vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
   vkDestroyInstance(m_instance, nullptr);
 }
+
+queue_family_indices vk_loader::get_queue_family_indices() {
+  return m_family_indices;
+}
+
+VkBuffer vk_loader::get_vertex_buffer() { return m_vertex_buffer; }

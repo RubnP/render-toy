@@ -8,10 +8,12 @@ file (GLOB render-toy-src
   "src/*.cc"
   "src/platform/*.cc"
   "src/utils/*.cc"
+  "src/utils/imgui/*.cc"
 
   # Imgui
   "include/imgui/*.cpp"
   "include/imgui/backends/imgui_impl_glfw.cpp"
+  "include/imgui/backends/imgui_impl_vulkan.cpp"
   "include/imgui/backends/imgui_impl_opengl3.cpp"
 ) # Src compilation
 
@@ -31,6 +33,7 @@ target_include_directories(render-toy PRIVATE "include/imgui/backends")
 target_include_directories(render-toy PUBLIC "src/")
 target_include_directories(render-toy PUBLIC "src/platform")
 target_include_directories(render-toy PUBLIC "src/utils")
+target_include_directories(render-toy PUBLIC "src/utils/imgui_tools")
 
 add_subdirectory(include/tinygltf/)
 add_subdirectory(include/tinyobjloader/)
