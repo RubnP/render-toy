@@ -139,9 +139,10 @@ public:
   VkPhysicalDevice get_selected_physical_device();
   std::vector<VkPhysicalDevice> get_physical_devices();
   VkDevice get_logical_device();
-  std::vector<VkCommandBuffer> get_command_buffers();
+  std::vector<VkCommandBuffer> *get_command_buffers();
   VkRenderPass get_render_pass();
   std::vector<VkFramebuffer> *get_swapchain_framebuffers();
+  std::vector<VkImageView> *get_swapchain_image_views();
   VkSwapchainKHR get_swapchain();
   VkExtent2D get_swapchain_extent();
   VkPipeline get_graphics_pipeline();

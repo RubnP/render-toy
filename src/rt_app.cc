@@ -4,6 +4,7 @@
  * @brief Main loop handler implementation
  */
 
+#include "vk_loader.hh"
 #include <cstdint>
 #include <rt_app.hh>
 #include <stdexcept>
@@ -48,6 +49,7 @@ void rt_app::main_loop() {
 }
 
 void rt_app::shutdown() {
+  cleanup_swapchain();
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
     vkDestroySemaphore(m_vk_loader.get_logical_device(),
                        m_render_finished_semaphores[i], nullptr);
@@ -55,9 +57,9 @@ void rt_app::shutdown() {
                        m_image_available_semaphores[i], nullptr);
     vkDestroyFence(m_vk_loader.get_logical_device(), m_in_flight_fences[i],
                    nullptr);
-    m_window_manager.destroy_window();
-    m_vk_loader.destroy_vulkan();
   }
+  m_vk_loader.destroy_vulkan();
+  m_window_manager.destroy_window();
 }
 
 void rt_app::create_sync_objects() {
@@ -142,17 +144,26 @@ void rt_app::record_command_buffer(VkCommandBuffer command_buffer,
 }
 
 void rt_app::draw_frame() {
+
   VkDevice device = m_vk_loader.get_logical_device();
   vkWaitForFences(device, 1, &m_in_flight_fences[current_frame], VK_TRUE,
                   UINT64_MAX);
-  vkResetFences(device, 1, &m_in_flight_fences[current_frame]);
 
   uint32_t img_index;
-  vkAcquireNextImageKHR(device, m_vk_loader.get_swapchain(), UINT64_MAX,
-                        m_image_available_semaphores[current_frame],
-                        VK_NULL_HANDLE, &img_index);
-  vkResetCommandBuffer(m_vk_loader.get_command_buffers()[current_frame], 0);
-  record_command_buffer(m_vk_loader.get_command_buffers()[current_frame],
+  VkResult result = vkAcquireNextImageKHR(
+      device, m_vk_loader.get_swapchain(), UINT64_MAX,
+      m_image_available_semaphores[current_frame], VK_NULL_HANDLE, &img_index);
+
+  if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+    recreate_swapchain();
+  } else if (result != VK_SUCCESS) {
+    throw std::runtime_error("Failed to present swapchain image");
+  }
+
+  vkResetFences(device, 1, &m_in_flight_fences[current_frame]);
+
+  vkResetCommandBuffer(m_vk_loader.get_command_buffers()->at(current_frame), 0);
+  record_command_buffer(m_vk_loader.get_command_buffers()->at(current_frame),
                         img_index);
 
   // Submit the recorded command buffer to draw
@@ -168,7 +179,7 @@ void rt_app::draw_frame() {
 
   submit_info.commandBufferCount = 1;
   VkCommandBuffer command_buffer =
-      m_vk_loader.get_command_buffers()[current_frame];
+      m_vk_loader.get_command_buffers()->at(current_frame);
   submit_info.pCommandBuffers = &command_buffer;
 
   VkSemaphore signal_semaphores[] = {
@@ -194,4 +205,28 @@ void rt_app::draw_frame() {
   vkQueuePresentKHR(m_vk_loader.get_present_queue(), &present_info);
 
   current_frame = (current_frame + 1) % MAX_FRAMES_IN_FLIGHT; // loop the frames
+}
+
+void rt_app::cleanup_swapchain() {
+  for (auto framebuffer : *m_vk_loader.get_swapchain_framebuffers()) {
+    vkDestroyFramebuffer(m_vk_loader.get_logical_device(), framebuffer,
+                         nullptr);
+  }
+
+  for (auto image_view : *m_vk_loader.get_swapchain_image_views()) {
+    vkDestroyImageView(m_vk_loader.get_logical_device(), image_view, nullptr);
+  }
+
+  vkDestroySwapchainKHR(m_vk_loader.get_logical_device(),
+                        m_vk_loader.get_swapchain(), nullptr);
+}
+
+void rt_app::recreate_swapchain() {
+  vkDeviceWaitIdle(m_vk_loader.get_logical_device());
+
+  cleanup_swapchain();
+
+  m_vk_loader.create_swapchain(m_window_manager.get_main_window());
+  m_vk_loader.create_swapchain_image_views();
+  m_vk_loader.create_framebuffers();
 }

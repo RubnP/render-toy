@@ -11,7 +11,7 @@ void window_manager::init_window() {
   glfwInit();
 
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-  glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+  glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
   m_main_window =
       glfwCreateWindow(WIDTH, HEIGHT, "render-toy", nullptr, nullptr);

@@ -811,8 +811,11 @@ void vk_loader::create_command_buffers(const int max_frames_in_flight) {
   }
 }
 
-std::vector<VkCommandBuffer> vk_loader::get_command_buffers() {
-  return m_command_buffers;
+std::vector<VkCommandBuffer> *vk_loader::get_command_buffers() {
+  return &m_command_buffers;
+}
+std::vector<VkImageView> *vk_loader::get_swapchain_image_views() {
+  return &m_swapchain_image_views;
 }
 VkRenderPass vk_loader::get_render_pass() { return m_render_pass; }
 std::vector<VkFramebuffer> *vk_loader::get_swapchain_framebuffers() {
@@ -827,25 +830,20 @@ VkQueue vk_loader::get_present_queue() { return m_present_queue; }
 
 void vk_loader::destroy_vulkan() {
 
-  for (auto framebuffer : m_swapchain_framebuffers) {
-    vkDestroyFramebuffer(m_logical_device, framebuffer, nullptr);
-  }
-
   vkDestroyPipeline(m_logical_device, m_graphics_pipeline, nullptr);
   vkDestroyPipelineLayout(m_logical_device, m_pipeline_layout, nullptr);
   vkDestroyRenderPass(m_logical_device, m_render_pass, nullptr);
-  for (auto image_view : m_swapchain_image_views) {
-    vkDestroyImageView(m_logical_device, image_view, nullptr);
-  }
-  vkDestroySwapchainKHR(m_logical_device, m_swapchain, nullptr);
 
   vkDestroyShaderModule(m_logical_device, m_def_shader[0], nullptr);
   vkDestroyShaderModule(m_logical_device, m_def_shader[1], nullptr);
+
+  vkDestroyCommandPool(m_logical_device, m_command_pool, nullptr);
 
   vkDestroyDevice(m_logical_device, nullptr);
   if (M_ENABLE_VALIDATION_LAYERS) {
     destroy_debug_utils_messenger_ext(m_instance, m_debug_messenger, nullptr);
   }
+
   vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
   vkDestroyInstance(m_instance, nullptr);
 }

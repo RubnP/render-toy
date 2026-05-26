@@ -27,6 +27,8 @@ class rt_app {
                              uint32_t img_index);
   void create_sync_objects();
   void draw_frame();
+  void cleanup_swapchain();
+  void recreate_swapchain();
 
 public:
   void run();
