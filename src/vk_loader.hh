@@ -125,6 +125,13 @@ class vk_loader {
   VkSurfaceFormatKHR choose_swap_surface_format(
       const std::vector<VkSurfaceFormatKHR> available_formats); // Swap chain
 
+  void create_buffer(
+      VkDeviceSize size, VkBufferUsageFlags usage,
+      VkMemoryPropertyFlags properties, VkBuffer &buffer,
+      VkDeviceMemory &buffer_memory); // Helper function for buffer creation
+
+  void copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer, VkDeviceSize size);
+
 public:
   //---------------Public methods----------------------
   void init_vulkan();

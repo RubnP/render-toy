@@ -14,11 +14,11 @@
 class rt_app {
 
   const std::vector<vertex> m_vertices = {
-      {{0.0f, -0.5f}, {1.0f, 0.5f, 0.5f}},
+      {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
       {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
       {{-0.5f, 0.5f},
-       {0.0f, 1.0f,
-        0.0f}}}; // TODO: Eventually change this for proper mesh loading
+       {0.0f, 0.0f,
+        1.0f}}}; // TODO: Eventually change this for proper mesh loading
 
   const int MAX_FRAMES_IN_FLIGHT = 2;
   uint32_t current_frame = 0;
