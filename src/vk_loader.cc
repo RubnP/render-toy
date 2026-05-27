@@ -496,16 +496,16 @@ void vk_loader::create_swapchain(GLFWwindow *window) {
   VkExtent2D extent =
       choose_swap_extent(swapchain_support.capabilities, window);
 
-  uint32_t image_count = swapchain_support.capabilities.minImageCount + 1;
+  m_swapchain_image_count = swapchain_support.capabilities.minImageCount + 1;
   if (swapchain_support.capabilities.maxImageCount > 0 &&
-      image_count > swapchain_support.capabilities.maxImageCount) {
-    uint32_t image_count = swapchain_support.capabilities.maxImageCount;
+      m_swapchain_image_count > swapchain_support.capabilities.maxImageCount) {
+    m_swapchain_image_count = swapchain_support.capabilities.maxImageCount;
   }
 
   VkSwapchainCreateInfoKHR create_info{};
   create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
   create_info.surface = m_surface;
-  create_info.minImageCount = image_count;
+  create_info.minImageCount = m_swapchain_image_count;
   create_info.imageFormat = surface_format.format;
   create_info.imageColorSpace = surface_format.colorSpace;
   create_info.imageExtent = extent;
@@ -537,10 +537,11 @@ void vk_loader::create_swapchain(GLFWwindow *window) {
     throw std::runtime_error("failed to create swap chain");
   }
 
-  vkGetSwapchainImagesKHR(m_logical_device, m_swapchain, &image_count, nullptr);
-  m_swapchain_images.resize(image_count);
-  vkGetSwapchainImagesKHR(m_logical_device, m_swapchain, &image_count,
-                          m_swapchain_images.data());
+  vkGetSwapchainImagesKHR(m_logical_device, m_swapchain,
+                          &m_swapchain_image_count, nullptr);
+  m_swapchain_images.resize(m_swapchain_image_count);
+  vkGetSwapchainImagesKHR(m_logical_device, m_swapchain,
+                          &m_swapchain_image_count, m_swapchain_images.data());
 
   m_swapchain_image_format = surface_format.format;
   m_swapchain_extent = extent;
@@ -936,7 +937,7 @@ void vk_loader::create_buffer(VkDeviceSize size, VkBufferUsageFlags usage,
   VkBufferCreateInfo buffer_info{};
   buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
   buffer_info.size = size;
-  buffer_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+  buffer_info.usage = usage;
   buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
   if (vkCreateBuffer(m_logical_device, &buffer_info, nullptr, &buffer) !=
@@ -1096,7 +1097,7 @@ void vk_loader::create_descriptor_sets() {
   alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
   alloc_info.descriptorPool = m_descriptor_pool;
   alloc_info.descriptorSetCount =
-      static_cast<uint32_t>(2); // TODO: Change this for max frames in flight
+      2; // TODO: Change this for max frames in flight
 
   alloc_info.pSetLayouts = layouts.data();
 
@@ -1136,3 +1137,7 @@ std::vector<VkDescriptorSet> *vk_loader::get_descriptor_sets() {
 }
 
 VkDescriptorPool vk_loader::get_descriptor_pool() { return m_descriptor_pool; }
+
+uint32_t vk_loader::get_swapchain_image_count() {
+  return m_swapchain_image_count;
+}

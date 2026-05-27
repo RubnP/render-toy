@@ -4,9 +4,11 @@
  * @brief Main loop handler implementation
  */
 
+#include "imgui.h"
 #include "vk_loader.hh"
 #include <cstdint>
 #include <imgui_hnd.hh>
+#include <imgui_impl_vulkan.h>
 #include <rt_app.hh>
 #include <stdexcept>
 #include <sys/types.h>
@@ -27,7 +29,11 @@ void rt_app::run() {
   shutdown();
 }
 
-void rt_app::init_window() { m_window_manager.init_window(); }
+void rt_app::init_window() {
+  m_window_manager.init_window();
+  m_window_manager.get_main_window()->add_functions(
+      []() { ImGui::ShowDemoWindow(); });
+}
 
 void rt_app::init_vulkan() {
   m_vk_loader.init_vulkan();
@@ -62,18 +68,22 @@ void rt_app::main_loop() {
 
     glfwPollEvents();
 
-    imgui_hnd::imgui_main_loop_start();
-    imgui_hnd::imgui_main_loop_end(&m_vk_loader, current_frame);
+  imgui_hnd::imgui_main_loop_start();
+  m_window_manager.update_windows();
 
-    draw_frame();
-    m_window_manager.update_windows();
+  // Finish ImGui frame and produce draw data so it can be recorded into the
+  // command buffer (draw_frame records ImGui draw data into the active
+  // command buffer while the render pass is open).
+  imgui_hnd::imgui_main_loop_end();
+
+  draw_frame();
   }
 
   vkDeviceWaitIdle(m_vk_loader.get_logical_device());
 }
 
 void rt_app::shutdown() {
-  imgui_hnd::imgui_shutdown();
+  imgui_hnd::imgui_shutdown(&m_vk_loader);
 
   cleanup_swapchain();
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
@@ -173,6 +183,11 @@ void rt_app::record_command_buffer(VkCommandBuffer command_buffer,
 
   // vkCmdDraw(command_buffer, 3, 1, 0, 0);
   vkCmdDrawIndexed(command_buffer, m_indices.size(), 1, 0, 0, 0);
+
+  // Render ImGui draw data into the same command buffer while the render
+  // pass is active. imgui_hnd::imgui_main_loop_end() must have been called
+  // earlier to produce draw data via ImGui::Render(). We now submit it here.
+  ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), command_buffer);
 
   vkCmdEndRenderPass(command_buffer);
 

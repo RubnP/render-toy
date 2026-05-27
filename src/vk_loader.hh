@@ -83,6 +83,7 @@ class vk_loader {
 
   VkFormat m_swapchain_image_format;
   VkExtent2D m_swapchain_extent;
+  uint32_t m_swapchain_image_count;
   VkShaderModule m_def_shader[2];
   VkRenderPass m_render_pass;
   VkDescriptorSetLayout m_descriptor_set_layout;
@@ -178,6 +179,7 @@ public:
   std::vector<VkImageView> *get_swapchain_image_views();
   VkSwapchainKHR get_swapchain();
   VkExtent2D get_swapchain_extent();
+  uint32_t get_swapchain_image_count();
   VkPipeline get_graphics_pipeline();
   VkPipelineLayout get_pipeline_layout();
   VkQueue get_graphics_queue();
