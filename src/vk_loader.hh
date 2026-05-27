@@ -92,6 +92,8 @@ class vk_loader {
 
   VkBuffer m_vertex_buffer;
   VkDeviceMemory m_vertex_buffer_memory;
+  VkBuffer m_index_buffer;
+  VkDeviceMemory m_index_buffer_memory;
 
   //---------------Member methods----------------------
   void create_instance();
@@ -148,6 +150,7 @@ public:
   void create_framebuffers();
   void create_command_pool();
   void create_vertex_buffer(const std::vector<vertex> *vertices);
+  void create_index_buffer(const std::vector<uint16_t> *indices);
   void create_command_buffers(const int max_frames_in_flight);
   VkInstance get_vk_instance();
   VkPhysicalDevice get_selected_physical_device();
@@ -164,6 +167,7 @@ public:
   VkQueue get_present_queue();
   queue_family_indices get_queue_family_indices();
   VkBuffer get_vertex_buffer();
+  VkBuffer get_index_buffer();
 
   uint32_t find_memory_type(uint32_t type_filter,
                             VkMemoryPropertyFlags property);

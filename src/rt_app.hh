@@ -11,14 +11,20 @@
 #include <vk_loader.hh>
 #include <vulkan/vulkan_core.h>
 
+struct trans_mat {
+  glm::mat4 mod_world;
+  glm::mat4 world_cam;
+  glm::mat4 proj;
+}; // Struct to store the transformation matrices needed for drawing
+
 class rt_app {
 
-  const std::vector<vertex> m_vertices = {
-      {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-      {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-      {{-0.5f, 0.5f},
-       {0.0f, 0.0f,
-        1.0f}}}; // TODO: Eventually change this for proper mesh loading
+  const std::vector<vertex> m_vertices = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+                                          {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+                                          {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+                                          {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
+
+  const std::vector<uint16_t> m_indices = {0, 1, 2, 2, 3, 0};
 
   const int MAX_FRAMES_IN_FLIGHT = 2;
   uint32_t current_frame = 0;

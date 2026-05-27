@@ -1,12 +1,18 @@
 #version 450
 
 
+layout(binding = 0) uniform trans_mat {
+  mat4 mod_world;
+  mat4 world_cam;
+  mat4 proj;
+} tr_mat;
+
 layout(location = 0) in vec2 in_position;
 layout(location = 1) in vec3 in_color;
 
 layout(location = 0) out vec3 frag_color;
 
 void main() {
-    gl_Position = vec4(in_position, 0.0, 1.0);
+    gl_Position = tr_mat.proj * tr_mat.world_cam * tr_mat.mod_world * vec4(in_position, 0.0, 1.0);
     frag_color = in_color;
 }

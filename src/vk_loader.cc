@@ -886,6 +886,8 @@ void vk_loader::destroy_vulkan() {
 
   vkDestroyBuffer(m_logical_device, m_vertex_buffer, nullptr);
   vkFreeMemory(m_logical_device, m_vertex_buffer_memory, nullptr);
+  vkDestroyBuffer(m_logical_device, m_index_buffer, nullptr);
+  vkFreeMemory(m_logical_device, m_index_buffer_memory, nullptr);
 
   vkDestroyPipeline(m_logical_device, m_graphics_pipeline, nullptr);
   vkDestroyPipelineLayout(m_logical_device, m_pipeline_layout, nullptr);
@@ -910,6 +912,7 @@ queue_family_indices vk_loader::get_queue_family_indices() {
 }
 
 VkBuffer vk_loader::get_vertex_buffer() { return m_vertex_buffer; }
+VkBuffer vk_loader::get_index_buffer() { return m_index_buffer; }
 
 void vk_loader::create_buffer(VkDeviceSize size, VkBufferUsageFlags usage,
                               VkMemoryPropertyFlags properties,
@@ -940,6 +943,33 @@ void vk_loader::create_buffer(VkDeviceSize size, VkBufferUsageFlags usage,
   }
 
   vkBindBufferMemory(m_logical_device, buffer, buffer_memory, 0);
+}
+
+void vk_loader::create_index_buffer(const std::vector<uint16_t> *indices) {
+  VkDeviceSize buffer_size = sizeof(uint16_t) * indices->size();
+  VkBuffer staging_buffer;
+  VkDeviceMemory staging_buffer_memory;
+  create_buffer(buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                    VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                staging_buffer, staging_buffer_memory);
+
+  void *data;
+  vkMapMemory(m_logical_device, staging_buffer_memory, 0, buffer_size, 0,
+              &data);
+  memcpy(data, indices->data(), buffer_size);
+  vkUnmapMemory(m_logical_device, staging_buffer_memory);
+
+  create_buffer(buffer_size,
+                VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                    VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_index_buffer,
+                m_index_buffer_memory);
+
+  copy_buffer(staging_buffer, m_index_buffer, buffer_size);
+
+  vkDestroyBuffer(m_logical_device, staging_buffer, nullptr);
+  vkFreeMemory(m_logical_device, staging_buffer_memory, nullptr);
 }
 
 void vk_loader::copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer,

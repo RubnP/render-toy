@@ -44,6 +44,7 @@ void rt_app::init_vulkan() {
   m_vk_loader.create_framebuffers();
   m_vk_loader.create_command_pool();
   m_vk_loader.create_vertex_buffer(&m_vertices);
+  m_vk_loader.create_index_buffer(&m_indices);
   m_vk_loader.create_command_buffers(MAX_FRAMES_IN_FLIGHT);
   create_sync_objects();
 }
@@ -139,8 +140,10 @@ void rt_app::record_command_buffer(VkCommandBuffer command_buffer,
                     m_vk_loader.get_graphics_pipeline());
 
   VkBuffer vertex_buffers[] = {m_vk_loader.get_vertex_buffer()};
-  VkDeviceSize offsets[] = {0};
-  vkCmdBindVertexBuffers(command_buffer, 0, 1, vertex_buffers, offsets);
+  VkDeviceSize offsets_vertex[] = {0};
+  vkCmdBindVertexBuffers(command_buffer, 0, 1, vertex_buffers, offsets_vertex);
+  vkCmdBindIndexBuffer(command_buffer, m_vk_loader.get_index_buffer(), 0,
+                       VK_INDEX_TYPE_UINT16);
 
   VkViewport viewport{};
   viewport.x = 0.0f;
@@ -156,7 +159,8 @@ void rt_app::record_command_buffer(VkCommandBuffer command_buffer,
   scissor.extent = swapchain_extent;
   vkCmdSetScissor(command_buffer, 0, 1, &scissor);
 
-  vkCmdDraw(command_buffer, 3, 1, 0, 0);
+  // vkCmdDraw(command_buffer, 3, 1, 0, 0);
+  vkCmdDrawIndexed(command_buffer, m_indices.size(), 1, 0, 0, 0);
 
   vkCmdEndRenderPass(command_buffer);
 
