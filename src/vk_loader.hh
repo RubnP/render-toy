@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "ubos.hh"
 #include <GLFW/glfw3.h>
 #include <cstdint>
 #include <iostream>
@@ -84,6 +85,9 @@ class vk_loader {
   VkExtent2D m_swapchain_extent;
   VkShaderModule m_def_shader[2];
   VkRenderPass m_render_pass;
+  VkDescriptorSetLayout m_descriptor_set_layout;
+  VkDescriptorPool m_descriptor_pool;
+  std::vector<VkDescriptorSet> m_descriptor_sets;
   VkPipelineLayout m_pipeline_layout;
   VkPipeline m_graphics_pipeline;
   VkCommandPool m_command_pool;
@@ -94,6 +98,10 @@ class vk_loader {
   VkDeviceMemory m_vertex_buffer_memory;
   VkBuffer m_index_buffer;
   VkDeviceMemory m_index_buffer_memory;
+
+  std::vector<VkBuffer> m_uniform_buffers;
+  std::vector<VkDeviceMemory> m_uniform_buffers_memory;
+  std::vector<void *> m_uniform_buffers_mapped;
 
   //---------------Member methods----------------------
   void create_instance();
@@ -152,6 +160,14 @@ public:
   void create_vertex_buffer(const std::vector<vertex> *vertices);
   void create_index_buffer(const std::vector<uint16_t> *indices);
   void create_command_buffers(const int max_frames_in_flight);
+  void create_descriptor_set_layout();
+  void create_uniform_buffers(int max_frames_in_flight);
+  void create_descriptor_pool();
+  void create_descriptor_sets();
+
+  void destroy_vulkan();
+
+  //----------------- Gettors ----------------------------
   VkInstance get_vk_instance();
   VkPhysicalDevice get_selected_physical_device();
   std::vector<VkPhysicalDevice> get_physical_devices();
@@ -163,13 +179,16 @@ public:
   VkSwapchainKHR get_swapchain();
   VkExtent2D get_swapchain_extent();
   VkPipeline get_graphics_pipeline();
+  VkPipelineLayout get_pipeline_layout();
   VkQueue get_graphics_queue();
   VkQueue get_present_queue();
   queue_family_indices get_queue_family_indices();
   VkBuffer get_vertex_buffer();
   VkBuffer get_index_buffer();
+  std::vector<void *> *get_uniform_buffers_mapped();
+  std::vector<VkDescriptorSet> *get_descriptor_sets();
+  VkDescriptorPool get_descriptor_pool();
 
   uint32_t find_memory_type(uint32_t type_filter,
                             VkMemoryPropertyFlags property);
-  void destroy_vulkan();
 };

@@ -11,6 +11,9 @@
 #include <stdexcept>
 #include <sys/types.h>
 #include <vulkan/vulkan_core.h>
+#define GLM_FORCE_RADIANS
+#include <chrono>
+#include <glm/gtc/matrix_transform.hpp>
 
 void rt_app::run() {
   init_window();
@@ -40,11 +43,15 @@ void rt_app::init_vulkan() {
       m_window_manager.get_main_window()->get_window());
   m_vk_loader.create_swapchain_image_views();
   m_vk_loader.create_render_pass();
+  m_vk_loader.create_descriptor_set_layout();
   m_vk_loader.create_def_graphics_pipeline();
   m_vk_loader.create_framebuffers();
   m_vk_loader.create_command_pool();
   m_vk_loader.create_vertex_buffer(&m_vertices);
   m_vk_loader.create_index_buffer(&m_indices);
+  m_vk_loader.create_uniform_buffers(MAX_FRAMES_IN_FLIGHT);
+  m_vk_loader.create_descriptor_pool();
+  m_vk_loader.create_descriptor_sets();
   m_vk_loader.create_command_buffers(MAX_FRAMES_IN_FLIGHT);
   create_sync_objects();
 }
@@ -159,6 +166,11 @@ void rt_app::record_command_buffer(VkCommandBuffer command_buffer,
   scissor.extent = swapchain_extent;
   vkCmdSetScissor(command_buffer, 0, 1, &scissor);
 
+  vkCmdBindDescriptorSets(
+      command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+      m_vk_loader.get_pipeline_layout(), 0, 1,
+      &(m_vk_loader.get_descriptor_sets()->at(current_frame)), 0, nullptr);
+
   // vkCmdDraw(command_buffer, 3, 1, 0, 0);
   vkCmdDrawIndexed(command_buffer, m_indices.size(), 1, 0, 0, 0);
 
@@ -191,6 +203,9 @@ void rt_app::draw_frame() {
   vkResetCommandBuffer(m_vk_loader.get_command_buffers()->at(current_frame), 0);
   record_command_buffer(m_vk_loader.get_command_buffers()->at(current_frame),
                         img_index);
+
+  // Update the uniforms
+  update_uniform_buffer(current_frame);
 
   // Submit the recorded command buffer to draw
 
@@ -256,4 +271,30 @@ void rt_app::recreate_swapchain() {
       m_window_manager.get_main_window()->get_window());
   m_vk_loader.create_swapchain_image_views();
   m_vk_loader.create_framebuffers();
+}
+
+void rt_app::update_uniform_buffer(uint32_t current_frame) {
+  static auto start_time = std::chrono::high_resolution_clock::now();
+  auto current_time = std::chrono::high_resolution_clock::now();
+  float time = std::chrono::duration<float, std::chrono::seconds::period>(
+                   current_time - start_time)
+                   .count();
+
+  trans_mat trans;
+  trans.mod_world = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f),
+                                glm::vec3(0.0f, 0.0f, 1.0f));
+  trans.world_cam =
+      glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f),
+                  glm::vec3(0.0f, 0.0f, 1.0f));
+
+  trans.proj =
+      glm::perspective(glm::radians(45.0f),
+                       m_vk_loader.get_swapchain_extent().width /
+                           (float)m_vk_loader.get_swapchain_extent().height,
+                       0.1f, 10.0f);
+
+  trans.proj[1][1] *= -1;
+
+  memcpy(m_vk_loader.get_uniform_buffers_mapped()->at(current_frame), &trans,
+         sizeof(trans));
 }

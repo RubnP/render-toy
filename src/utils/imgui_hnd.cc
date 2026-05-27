@@ -28,7 +28,8 @@ void imgui_hnd::imgui_init(vk_loader *vk_ld_ptr, platform::window *wnd) {
       vk_ld_ptr->get_queue_family_indices().graphics_family.value();
   init_info.Queue = vk_ld_ptr->get_graphics_queue();
   // init_info.PipelineCache = vk_ld_ptr->get_graphics_pipeline();
-  // init_info.DescriptorPool = YOUR_DESCRIPTOR_POOL; TODO: Create descriptor
+  init_info.DescriptorPool =
+      vk_ld_ptr->get_descriptor_pool(); // TODO: Create descriptor
   // pool for uniform buffer and put it here.
   init_info.MinImageCount = 2;
   init_info.ImageCount = 2;
