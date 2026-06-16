@@ -7,6 +7,8 @@
  */
 
 #include "ubos.hh"
+#include <glm/ext/vector_int2.hpp>
+#include <iterator>
 #include <limits>
 #include <string>
 #define GLFW_INCLUDE_VULKAN
@@ -419,13 +421,17 @@ void vk_loader::create_logical_device() {
       static_cast<uint32_t>(m_device_extensions.size());
   create_info.ppEnabledExtensionNames = m_device_extensions.data();
 
-  if (M_ENABLE_VALIDATION_LAYERS) {
-    create_info.enabledLayerCount =
-        static_cast<uint32_t>(m_validation_layers.size());
-    create_info.ppEnabledLayerNames = m_validation_layers.data();
-  } else {
-    create_info.enabledLayerCount = 0;
-  }
+  // if (M_ENABLE_VALIDATION_LAYERS) {
+  //   create_info.enabledLayerCount =
+  //       static_cast<uint32_t>(m_validation_layers.size());
+  //   create_info.ppEnabledLayerNames = m_validation_layers.data();
+  // } else {
+  //   create_info.enabledLayerCount = 0;
+  // }
+
+  // TODO: Investigate this
+  // https://docs.vulkan.org/spec/latest/appendices/legacy.html#legacy-devicelayers
+  create_info.enabledLayerCount = 0;
 
   if (vkCreateDevice(m_selected_physical_device, &create_info, nullptr,
                      &m_logical_device) != VK_SUCCESS) {
@@ -903,8 +909,6 @@ void vk_loader::destroy_vulkan() {
   vkDestroyDescriptorPool(m_logical_device, m_descriptor_pool, nullptr);
   vkDestroyDescriptorSetLayout(m_logical_device, m_descriptor_set_layout,
                                nullptr);
-  vkDestroyDescriptorSetLayout(m_logical_device, m_descriptor_set_layout,
-                               nullptr);
 
   vkDestroyPipeline(m_logical_device, m_graphics_pipeline, nullptr);
   vkDestroyPipelineLayout(m_logical_device, m_pipeline_layout, nullptr);
@@ -991,22 +995,7 @@ void vk_loader::create_index_buffer(const std::vector<uint16_t> *indices) {
 
 void vk_loader::copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer,
                             VkDeviceSize size) {
-  VkCommandBufferAllocateInfo alloc_info{};
-  alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-  alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  alloc_info.commandPool =
-      m_command_pool; // TODO: Eventually create a separated command pool for
-                      // this sort lived command buffers
-  alloc_info.commandBufferCount = 1;
-
-  VkCommandBuffer command_buffer;
-  vkAllocateCommandBuffers(m_logical_device, &alloc_info, &command_buffer);
-
-  VkCommandBufferBeginInfo begin_info{};
-  begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-  vkBeginCommandBuffer(command_buffer, &begin_info);
+  VkCommandBuffer command_buffer = begin_single_time_commands();
 
   VkBufferCopy copy_region{};
   copy_region.srcOffset = 0;
@@ -1014,19 +1003,7 @@ void vk_loader::copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer,
   copy_region.size = size;
   vkCmdCopyBuffer(command_buffer, src_buffer, dst_buffer, 1, &copy_region);
 
-  vkEndCommandBuffer(command_buffer);
-
-  VkSubmitInfo submit_info{};
-  submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  submit_info.commandBufferCount = 1;
-  submit_info.pCommandBuffers = &command_buffer;
-  vkQueueSubmit(m_graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
-  vkQueueWaitIdle(m_graphics_queue);
-
-  vkFreeCommandBuffers(
-      m_logical_device, m_command_pool, 1,
-      &command_buffer); // TODO: When using diferent command pull remember to
-                        // free it from the new command pool
+  end_single_time_commands(command_buffer);
 }
 
 void vk_loader::create_descriptor_set_layout() {
@@ -1140,4 +1117,102 @@ VkDescriptorPool vk_loader::get_descriptor_pool() { return m_descriptor_pool; }
 
 uint32_t vk_loader::get_swapchain_image_count() {
   return m_swapchain_image_count;
+}
+
+void vk_loader::upload_image_to_gpu(glm::ivec3 img_size, stbi_uc *pixels,
+                                    VkImage *img, VkDeviceMemory *img_mem,
+                                    VkImageTiling tiling,
+                                    VkImageUsageFlags usage,
+                                    VkMemoryPropertyFlags properties,
+                                    VkFormat format) {
+  // TODO:
+  VkDeviceSize img_mem_size = img_size.x * img_size.y * img_size.z;
+
+  VkBuffer staging_buffer;
+  VkDeviceMemory staging_buffer_memory;
+
+  create_buffer(img_mem_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                    VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                staging_buffer, staging_buffer_memory);
+
+  void *data;
+  vkMapMemory(m_logical_device, staging_buffer_memory, 0, img_mem_size, 0,
+              &data);
+  memcpy(data, pixels, static_cast<size_t>(img_mem_size));
+  vkUnmapMemory(m_logical_device, staging_buffer_memory);
+
+  VkImageCreateInfo image_info{};
+  image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+  image_info.imageType = VK_IMAGE_TYPE_2D;
+  image_info.extent.width = static_cast<uint32_t>(img_size.x);
+  image_info.extent.height = static_cast<uint32_t>(img_size.y);
+  image_info.extent.depth = 1;
+  image_info.mipLevels = 1;
+  image_info.arrayLayers = 1;
+  image_info.format = format;
+  image_info.tiling = tiling;
+  image_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  image_info.usage = usage;
+  image_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+  image_info.samples = VK_SAMPLE_COUNT_1_BIT;
+  image_info.flags = 0;
+
+  if (vkCreateImage(m_logical_device, &image_info, nullptr, img) !=
+      VK_SUCCESS) {
+    throw std::runtime_error("Cound not upload image to GPU");
+  }
+
+  VkMemoryRequirements img_mem_req;
+  vkGetImageMemoryRequirements(m_logical_device, *img, &img_mem_req);
+
+  VkMemoryAllocateInfo alloc_info{};
+  alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+  alloc_info.allocationSize = img_mem_req.size;
+  alloc_info.memoryTypeIndex =
+      find_memory_type(img_mem_req.memoryTypeBits, properties);
+  if (vkAllocateMemory(m_logical_device, &alloc_info, nullptr, img_mem) !=
+      VK_SUCCESS) {
+    throw std::runtime_error("Failed to allocate memory for texture");
+  }
+
+  vkBindImageMemory(m_logical_device, *img, *img_mem, 0);
+}
+
+VkCommandBuffer vk_loader::begin_single_time_commands() {
+  VkCommandBufferAllocateInfo alloc_info{};
+  alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+  alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+  alloc_info.commandPool =
+      m_command_pool; // TODO: Eventually create a separated command pool for
+                      // this sort lived command buffers
+  alloc_info.commandBufferCount = 1;
+
+  VkCommandBuffer command_buffer;
+  vkAllocateCommandBuffers(m_logical_device, &alloc_info, &command_buffer);
+
+  VkCommandBufferBeginInfo begin_info{};
+  begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+  vkBeginCommandBuffer(command_buffer, &begin_info);
+
+  return command_buffer;
+}
+
+void vk_loader::end_single_time_commands(VkCommandBuffer command_buffer) {
+
+  vkEndCommandBuffer(command_buffer);
+
+  VkSubmitInfo submit_info{};
+  submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  submit_info.commandBufferCount = 1;
+  submit_info.pCommandBuffers = &command_buffer;
+  vkQueueSubmit(m_graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
+  vkQueueWaitIdle(m_graphics_queue);
+
+  vkFreeCommandBuffers(
+      m_logical_device, m_command_pool, 1,
+      &command_buffer); // TODO: When using diferent command pull remember to
+                        // free it from the new command pool
 }

@@ -11,6 +11,7 @@
 #include <vertex.hh>
 #include <vk_loader.hh>
 #include <vulkan/vulkan_core.h>
+
 class rt_app {
 
   const std::vector<vertex> m_vertices = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
@@ -28,6 +29,9 @@ class rt_app {
   std::vector<VkSemaphore> m_render_finished_semaphores;
   std::vector<VkFence> m_in_flight_fences;
 
+  VkImage m_def_tex;
+  VkDeviceMemory m_def_tex_mem;
+
   void init_window();
   void init_vulkan();
   void main_loop();
@@ -39,6 +43,7 @@ class rt_app {
   void update_uniform_buffer(uint32_t current_frame);
   void cleanup_swapchain();
   void recreate_swapchain();
+  void create_texture_image();
 
 public:
   rt_app(){};

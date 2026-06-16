@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <iostream>
 #include <optional>
+#include <stb_image.h>
 #include <vector>
 #include <vertex.hh>
 #include <vulkan/vulkan.h>
@@ -193,4 +194,15 @@ public:
 
   uint32_t find_memory_type(uint32_t type_filter,
                             VkMemoryPropertyFlags property);
+
+  void upload_image_to_gpu(
+      glm::ivec3 img_size, stbi_uc *pixels, VkImage *img,
+      VkDeviceMemory *img_mem, VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL,
+      VkImageUsageFlags usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+                                VK_IMAGE_USAGE_SAMPLED_BIT,
+      VkMemoryPropertyFlags properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+      VkFormat format = VK_FORMAT_R8G8B8A8_SRGB);
+
+  VkCommandBuffer begin_single_time_commands();
+  void end_single_time_commands(VkCommandBuffer command_buffer);
 };

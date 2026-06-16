@@ -17,6 +17,8 @@
 #include <chrono>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <stb_image.h>
+
 void rt_app::run() {
   init_window();
   init_vulkan();
@@ -53,6 +55,7 @@ void rt_app::init_vulkan() {
   m_vk_loader.create_def_graphics_pipeline();
   m_vk_loader.create_framebuffers();
   m_vk_loader.create_command_pool();
+  create_texture_image();
   m_vk_loader.create_vertex_buffer(&m_vertices);
   m_vk_loader.create_index_buffer(&m_indices);
   m_vk_loader.create_uniform_buffers(MAX_FRAMES_IN_FLIGHT);
@@ -68,15 +71,15 @@ void rt_app::main_loop() {
 
     glfwPollEvents();
 
-  imgui_hnd::imgui_main_loop_start();
-  m_window_manager.update_windows();
+    imgui_hnd::imgui_main_loop_start();
+    m_window_manager.update_windows();
 
-  // Finish ImGui frame and produce draw data so it can be recorded into the
-  // command buffer (draw_frame records ImGui draw data into the active
-  // command buffer while the render pass is open).
-  imgui_hnd::imgui_main_loop_end();
+    // Finish ImGui frame and produce draw data so it can be recorded into the
+    // command buffer (draw_frame records ImGui draw data into the active
+    // command buffer while the render pass is open).
+    imgui_hnd::imgui_main_loop_end();
 
-  draw_frame();
+    draw_frame();
   }
 
   vkDeviceWaitIdle(m_vk_loader.get_logical_device());
@@ -312,4 +315,20 @@ void rt_app::update_uniform_buffer(uint32_t current_frame) {
 
   memcpy(m_vk_loader.get_uniform_buffers_mapped()->at(current_frame), &trans,
          sizeof(trans));
+}
+
+void rt_app::create_texture_image() {
+  int tex_width, tex_height, tex_channels;
+  stbi_uc *pixels = stbi_load("data/def_texture.jpg", &tex_width, &tex_height,
+                              &tex_channels, STBI_rgb_alpha);
+
+  if (!pixels) {
+    throw std::runtime_error("Could not load the default texture");
+  }
+
+  // TODO: Load it to the gpu
+  m_vk_loader.upload_image_to_gpu({tex_width, tex_height, tex_channels}, pixels,
+                                  &m_def_tex, &m_def_tex_mem);
+
+  stbi_image_free(pixels);
 }
