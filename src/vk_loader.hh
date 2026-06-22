@@ -205,4 +205,11 @@ public:
 
   VkCommandBuffer begin_single_time_commands();
   void end_single_time_commands(VkCommandBuffer command_buffer);
+
+  void copy_buffer_to_image(VkBuffer buffer, VkImage image, uint32_t width,
+                            uint32_t height);
+
+  void transition_image_layout(VkImage image, VkFormat format,
+                               VkImageLayout old_layout,
+                               VkImageLayout new_layout);
 };

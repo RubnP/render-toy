@@ -5,6 +5,7 @@
  */
 
 #pragma once
+#include <cstdint>
 #include <glm/glm.hpp>
 #include <platform/window_manager.hh>
 #include <ubos.hh>

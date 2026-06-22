@@ -89,6 +89,10 @@ void rt_app::shutdown() {
   imgui_hnd::imgui_shutdown(&m_vk_loader);
 
   cleanup_swapchain();
+
+  vkDestroyImage(m_vk_loader.get_logical_device(), m_def_tex, nullptr);
+  vkFreeMemory(m_vk_loader.get_logical_device(), m_def_tex_mem, nullptr);
+
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
     vkDestroySemaphore(m_vk_loader.get_logical_device(),
                        m_render_finished_semaphores[i], nullptr);
@@ -326,7 +330,6 @@ void rt_app::create_texture_image() {
     throw std::runtime_error("Could not load the default texture");
   }
 
-  // TODO: Load it to the gpu
   m_vk_loader.upload_image_to_gpu({tex_width, tex_height, tex_channels}, pixels,
                                   &m_def_tex, &m_def_tex_mem);
 

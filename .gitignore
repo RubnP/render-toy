@@ -2,4 +2,7 @@ out/
 latex/
 html/
 .cache/
+build/
+.config/
+data/
 compile_commands.json
