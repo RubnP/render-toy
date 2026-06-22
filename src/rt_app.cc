@@ -338,6 +338,8 @@ void rt_app::create_texture_image() {
     throw std::runtime_error("Could not load the default texture");
   }
 
+  tex_channels = 4;
+
   m_vk_loader.upload_image_to_gpu({tex_width, tex_height, tex_channels}, pixels,
                                   &m_def_tex, &m_def_tex_mem);
 

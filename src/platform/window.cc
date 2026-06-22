@@ -4,6 +4,7 @@
  * @brief This file contains the implementation of the window class
  */
 
+#include <GLFW/glfw3.h>
 #include <vector>
 #include <window.hh>
 
@@ -13,6 +14,7 @@ using namespace platform;
  * @brief def initialization
  */
 window::window(int WIDTH, int HEIGHT) {
+  glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
   glfwInit();
 
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);

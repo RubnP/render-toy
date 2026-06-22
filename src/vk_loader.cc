@@ -162,6 +162,10 @@ std::vector<const char *> vk_loader::get_required_extensions() {
   if (M_ENABLE_VALIDATION_LAYERS) {
     extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
   }
+
+  for (auto ext : extensions) {
+    std::cout << "Extensions :" << ext << "\n";
+  }
   return extensions;
 }
 
@@ -196,8 +200,10 @@ void vk_loader::destroy_debug_utils_messenger_ext(
 }
 
 void vk_loader::create_surface(GLFWwindow *window) {
-  if (glfwCreateWindowSurface(m_instance, window, nullptr, &m_surface) !=
-      VK_SUCCESS) {
+  auto result =
+      glfwCreateWindowSurface(m_instance, window, nullptr, &m_surface);
+  if (result != VK_SUCCESS) {
+    std::cerr << "glfwCreateWindowSurface failed: " << result << '\n';
     throw std::runtime_error("failed to create window surface");
   }
 }
@@ -1050,7 +1056,9 @@ void vk_loader::create_descriptor_pool() {
   // flight (number of uniform buffers). Fall back to 2 if that hasn't been
   // created yet.
   uint32_t descriptor_count =
-      m_uniform_buffers.empty() ? 2u : static_cast<uint32_t>(m_uniform_buffers.size());
+      m_uniform_buffers.empty()
+          ? 2u
+          : static_cast<uint32_t>(m_uniform_buffers.size());
 
   std::array<VkDescriptorPoolSize, 2> pool_sizes{};
   pool_sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -1077,7 +1085,8 @@ void vk_loader::create_descriptor_sets(VkImageView image_view,
   // of uniform buffers / frames in flight). Fall back to 2 if unknown.
   size_t set_count = m_uniform_buffers.empty() ? 2u : m_uniform_buffers.size();
 
-  std::vector<VkDescriptorSetLayout> layouts(set_count, m_descriptor_set_layout);
+  std::vector<VkDescriptorSetLayout> layouts(set_count,
+                                             m_descriptor_set_layout);
 
   VkDescriptorSetAllocateInfo alloc_info{};
   alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -1093,8 +1102,7 @@ void vk_loader::create_descriptor_sets(VkImageView image_view,
     throw std::runtime_error("failed to allocate the descriptor sets");
   }
 
-  for (size_t i = 0; i < set_count; ++i)
-  {
+  for (size_t i = 0; i < set_count; ++i) {
     VkDescriptorBufferInfo buffer_info{};
     buffer_info.buffer = m_uniform_buffers[i];
     buffer_info.offset = 0;
