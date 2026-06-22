@@ -15,10 +15,11 @@
 
 class rt_app {
 
-  const std::vector<vertex> m_vertices = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-                                          {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-                                          {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-                                          {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
+  const std::vector<vertex> m_vertices = {
+      {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+      {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+      {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+      {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}};
   const std::vector<uint16_t> m_indices = {0, 1, 2, 2, 3, 0};
 
   const int MAX_FRAMES_IN_FLIGHT = 2;
@@ -32,6 +33,8 @@ class rt_app {
 
   VkImage m_def_tex;
   VkDeviceMemory m_def_tex_mem;
+  VkImageView m_def_tex_image_view;
+  VkSampler m_def_tex_sampler;
 
   void init_window();
   void init_vulkan();
@@ -44,7 +47,10 @@ class rt_app {
   void update_uniform_buffer(uint32_t current_frame);
   void cleanup_swapchain();
   void recreate_swapchain();
-  void create_texture_image();
+  void create_texture_image();      // TODO:
+  void create_texture_image_view(); // TODO:
+  void create_texture_sampler();    // TODO: Change this functions to load and
+                                    // create imageviews of any texture
 
 public:
   rt_app(){};

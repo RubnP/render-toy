@@ -165,7 +165,7 @@ public:
   void create_descriptor_set_layout();
   void create_uniform_buffers(int max_frames_in_flight);
   void create_descriptor_pool();
-  void create_descriptor_sets();
+  void create_descriptor_sets(VkImageView image_view, VkSampler tex_sampler);
 
   void destroy_vulkan();
 
@@ -205,11 +205,11 @@ public:
 
   VkCommandBuffer begin_single_time_commands();
   void end_single_time_commands(VkCommandBuffer command_buffer);
-
   void copy_buffer_to_image(VkBuffer buffer, VkImage image, uint32_t width,
                             uint32_t height);
-
   void transition_image_layout(VkImage image, VkFormat format,
                                VkImageLayout old_layout,
                                VkImageLayout new_layout);
+
+  VkImageView create_image_view(VkImage image, VkFormat format);
 };

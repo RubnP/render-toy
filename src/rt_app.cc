@@ -56,11 +56,13 @@ void rt_app::init_vulkan() {
   m_vk_loader.create_framebuffers();
   m_vk_loader.create_command_pool();
   create_texture_image();
+  create_texture_image_view();
+  create_texture_sampler();
   m_vk_loader.create_vertex_buffer(&m_vertices);
   m_vk_loader.create_index_buffer(&m_indices);
   m_vk_loader.create_uniform_buffers(MAX_FRAMES_IN_FLIGHT);
   m_vk_loader.create_descriptor_pool();
-  m_vk_loader.create_descriptor_sets();
+  m_vk_loader.create_descriptor_sets(m_def_tex_image_view, m_def_tex_sampler);
   m_vk_loader.create_command_buffers(MAX_FRAMES_IN_FLIGHT);
   create_sync_objects();
 }
@@ -89,6 +91,12 @@ void rt_app::shutdown() {
   imgui_hnd::imgui_shutdown(&m_vk_loader);
 
   cleanup_swapchain();
+
+  vkDestroySampler(m_vk_loader.get_logical_device(), m_def_tex_sampler,
+                   nullptr);
+  vkDestroyImageView(m_vk_loader.get_logical_device(), m_def_tex_image_view,
+                     nullptr); // Destroy default texture, TODO: Eventually
+                               // clean all textures on the GPU on shutdown
 
   vkDestroyImage(m_vk_loader.get_logical_device(), m_def_tex, nullptr);
   vkFreeMemory(m_vk_loader.get_logical_device(), m_def_tex_mem, nullptr);
@@ -334,4 +342,43 @@ void rt_app::create_texture_image() {
                                   &m_def_tex, &m_def_tex_mem);
 
   stbi_image_free(pixels);
+}
+
+void rt_app::create_texture_image_view() {
+  m_def_tex_image_view =
+      m_vk_loader.create_image_view(m_def_tex, VK_FORMAT_R8G8B8A8_SRGB);
+}
+
+void rt_app::create_texture_sampler() {
+  VkSamplerCreateInfo sampler_info{};
+  sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+  sampler_info.magFilter = VK_FILTER_LINEAR;
+  sampler_info.minFilter = VK_FILTER_LINEAR;
+
+  sampler_info.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  sampler_info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+  sampler_info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+
+  sampler_info.anisotropyEnable = VK_TRUE;
+  VkPhysicalDeviceProperties properties{};
+  vkGetPhysicalDeviceProperties(m_vk_loader.get_selected_physical_device(),
+                                &properties);
+  sampler_info.maxAnisotropy =
+      properties.limits.maxSamplerAnisotropy; // TODO: Make this a toggle
+
+  sampler_info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+  sampler_info.unnormalizedCoordinates = VK_FALSE;
+
+  sampler_info.compareEnable = VK_FALSE;
+  sampler_info.compareOp = VK_COMPARE_OP_ALWAYS;
+
+  sampler_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+  sampler_info.mipLodBias = 0.0f;
+  sampler_info.minLod = 0.0f;
+  sampler_info.maxLod = 0.0f;
+
+  if (vkCreateSampler(m_vk_loader.get_logical_device(), &sampler_info, nullptr,
+                      &m_def_tex_sampler) != VK_SUCCESS) {
+    throw std::runtime_error("failed to create texture sampler");
+  }
 }
