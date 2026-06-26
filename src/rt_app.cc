@@ -55,6 +55,7 @@ void rt_app::init_vulkan() {
   m_vk_loader.create_def_graphics_pipeline();
   m_vk_loader.create_framebuffers();
   m_vk_loader.create_command_pool();
+  create_depth_resources();
   create_texture_image();
   create_texture_image_view();
   create_texture_sampler();

@@ -42,6 +42,10 @@ class rt_app {
   VkImageView m_def_tex_image_view;
   VkSampler m_def_tex_sampler;
 
+  VkImage m_def_depth_texture;
+  VkDeviceMemory m_def_depth_image_memory;
+  VkImageView m_def_depth_image_view;
+
   void init_window();
   void init_vulkan();
   void main_loop();
@@ -57,6 +61,8 @@ class rt_app {
   void create_texture_image_view(); // TODO:
   void create_texture_sampler();    // TODO: Change this functions to load and
                                     // create imageviews of any texture
+
+  void create_depth_resources(); // TODO:
 
 public:
   rt_app(){};
